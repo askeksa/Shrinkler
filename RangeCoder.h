@@ -32,7 +32,7 @@ class RangeCoder : public Coder {
 
 	static bool init_sizetable() {
 		for (int i = 0 ; i < 128 ; i++) {
-			sizetable[i] = round((8.0 - log(128 + i) / log(2)) * (1 << BIT_PRECISION));
+			sizetable[i] = (int) round((8.0 - log(128 + i) / log(2)) * (1 << BIT_PRECISION));
 		}
 
 		return true;
