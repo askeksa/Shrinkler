@@ -64,36 +64,39 @@ class HunkFile {
 	vector<Longword> data;
 	vector<HunkInfo> hunks;
 public:
-	bool load(const char *filename) {
+	void load(const char *filename) {
 		FILE *file;
-		if (!(file = fopen(filename, "rb"))) {
-			printf("Error while reading file %s\n", filename);
-			return false;
+		if ((file = fopen(filename, "rb"))) {
+			fseek(file, 0, SEEK_END);
+			int length = ftell(file);
+			fseek(file, 0, SEEK_SET);
+			if (length & 3) {
+				printf("File %s has an illegal size!\n\n", filename);
+				fclose(file);
+				exit(1);
+			}
+			data.resize(length / 4);
+			if (fread(&data[0], 4, data.size(), file) == data.size()) {
+				fclose(file);
+				return;
+			}
 		}
-		fseek(file, 0, SEEK_END);
-		int length = ftell(file);
-		fseek(file, 0, SEEK_SET);
-		if (length & 3) {
-			printf("File %s has an illegal size!\n", filename);
-			fclose(file);
-			return false;
-		}
-		data.resize(length / 4);
-		fread(&data[0], 4, data.size(), file);
-		fclose(file);
-		return true;
+
+		printf("Error while reading file %s\n\n", filename);
+		exit(1);
 	}
 
-	bool save(const char *filename) {
+	void save(const char *filename) {
 		FILE *file;
 		if ((file = fopen(filename, "wb"))) {
-			fwrite(&data[0], 4, data.size(), file);
-			fclose(file);
-		} else {
-			printf("Error while writing file %s\n", filename);
-			return false;
+			if (fwrite(&data[0], 4, data.size(), file) == data.size()) {
+				fclose(file);
+				return;
+			}
 		}
-		return true;
+
+		printf("Error while writing file %s\n\n", filename);
+		exit(1);
 	}
 
 	int size() {
