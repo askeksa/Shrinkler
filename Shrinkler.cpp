@@ -137,12 +137,20 @@ int main(int argc, const char *argv[]) {
 	printf("Loading file %s...\n\n", infile);
 	HunkFile *orig = new HunkFile;
 	orig->load(infile);
-	orig->analyze();
+	if (!orig->analyze()) {
+		printf("\nError while analyzing input file!\n\n");
+		delete orig;
+		exit(1);
+	}
 	if (hunkmerge.value) {
 		printf("Merging hunks...\n\n");
 		HunkFile *merged = orig->merge_hunks(orig->merged_hunklist());
-		merged->analyze();
 		delete orig;
+		if (!merged->analyze()) {
+			printf("\nError while analyzing merged file!\n\n");
+			delete merged;
+			exit(1);
+		}
 		orig = merged;
 	}
 	if (mini.value && !orig->valid_mini()) {
@@ -154,14 +162,17 @@ int main(int argc, const char *argv[]) {
 	}
 	printf("Crunching...\n\n");
 	HunkFile *crunched = orig->crunch(&params, mini.value);
+	delete orig;
 	printf("References considered: %d\nReferences discarded:  %d\n\n", RefEdge::max_edge_count, RefEdge::edges_cleaned);
-	crunched->analyze();
+	if (!crunched->analyze()) {
+		printf("\nError while analyzing crunched file!\n\n");
+		delete crunched;
+	}
 
 	printf("Saving file %s...\n\n", outfile);
 	crunched->save(outfile);
 
 	printf("Final file size: %d\n\n", crunched->size());
-	delete orig;
 	delete crunched;
 
 	return 0;
