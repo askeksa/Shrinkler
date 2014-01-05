@@ -109,6 +109,8 @@ public:
 	virtual void begin(int size) = 0;
 	virtual void update(int pos) = 0;
 	virtual void end() = 0;
+
+	virtual ~LZProgress() {}
 };
 
 struct LZResultEdge {
