@@ -19,7 +19,7 @@ void usage() {
 	printf(" -m, --mini           Use a smaller, but more restricted decrunch header\n");
 	printf(" -i, --iterations     Number of iterations for the compression (default 2)\n");
 	printf(" -l, --length-margin  Number of shorter matches considered for each match (default 0)\n");
-	printf(" -s, --skip-length    Minimum match length to accept greedily (default 1000)\n");
+	printf(" -s, --skip-length    Minimum match length to accept greedily (default 200)\n");
 	printf(" -c, --consecutive    Number of match positions to consider in same-valued blocks (default 20)\n");
 	printf(" -a, --same-length    Number of matches of the same length to consider (default 20)\n");
 	printf(" -r, --references     Number of references to keep track of during LZ parsing (default 10000)\n");
