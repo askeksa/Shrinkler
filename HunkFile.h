@@ -18,6 +18,8 @@ using std::min;
 #include "AmigaWords.h"
 #include "DecrunchHeaders.h"
 #include "Pack.h"
+#include "RangeDecoder.h"
+#include "LZDecoder.h"
 
 const char *hunktype[HUNK_ABSRELOC16-HUNK_UNIT+1] = {
 	"UNIT","NAME","CODE","DATA","BSS ","RELOC32","RELOC16","RELOC8",
@@ -59,6 +61,52 @@ public:
 		return waste(h1) < waste(h2);
 	}
 };
+
+class LZVerifier : public LZReceiver {
+	int hunk;
+	unsigned char *data;
+	int data_length;
+	int pos;
+public:
+	LZVerifier(int hunk, unsigned char *data, int data_length) : hunk(hunk), data(data), data_length(data_length), pos(0) {}
+
+	bool receiveLiteral(unsigned char lit) {
+		if (lit != data[pos]) {
+			printf("Verify error: literal at position %d in hunk %d has incorrect value (0x%02X, should be 0x%02X)!\n",
+				pos, hunk, lit, data[pos]);
+			return false;
+		}
+		pos += 1;
+		return true;
+	}
+
+	bool receiveReference(int offset, int length) {
+		if (offset < 1 || offset > pos) {
+			printf("Verify error: reference at position %d in hunk %d has invalid offset (%d)!\n",
+				pos, hunk, offset);
+			return false;
+		}
+		if (length > data_length - pos) {
+			printf("Verify error: reference at position %d in hunk %d overflows hunk (length %d, %d bytes past end)!\n",
+				pos, hunk, length, pos + length - data_length);
+			return false;
+		}
+		for (int i = 0 ; i < length ; i++) {
+			if (data[pos - offset + i] != data[pos + i]) {
+				printf("Verify error: reference at position %d in hunk %d has incorrect value for byte %d of %d (0x%02X, should be 0x%02X)!\n",
+					pos, hunk, i, length, data[pos - offset + i], data[pos + i]);
+				return false;
+			}
+		}
+		pos += length;
+		return true;
+	}
+
+	int size() {
+		return pos;
+	}
+};
+
 
 class HunkFile {
 	vector<Longword> data;
@@ -650,8 +698,55 @@ public:
 		ef->data[dpos++] = HUNK_END;
 		// Note resulting file size
 		ef->data.resize(dpos);
-
 		printf("\n");
+
+		printf("Verifying... ");
+		fflush(stdout);
+		RangeDecoder decoder(LZEncoder::NUM_CONTEXTS + NUM_RELOC_CONTEXTS, pack_buffer);
+		LZDecoder lzd(&decoder);
+		for (int h = 0 ; h < (mini ? 1 : numhunks) ; h++) {
+			if (hunks[h].type != HUNK_BSS) {
+				// Find hunk data
+				unsigned char *hunk_data = (unsigned char *) &data[hunks[h].datastart];
+				int hunk_data_length = hunks[h].datasize * 4;
+				if (mini) {
+					// Trim trailing zeros
+					while (hunk_data_length > 0 && hunk_data[hunk_data_length - 1] == 0) {
+						hunk_data_length--;
+					}
+				}
+
+				// Verify data
+				bool error = false;
+				LZVerifier verifier(h, hunk_data, hunk_data_length);
+				decoder.reset();
+				if (!lzd.decode(verifier)) {
+					error = true;
+				}
+
+				// Check length
+				if (!error && verifier.size() != hunk_data_length) {
+					printf("Verify error: hunk %d has incorrect length (%d, should have been %d)!\n", h, verifier.size(), hunk_data_length);
+					error = true;
+				}
+
+				if (error) {
+					exit(1);
+				}
+			}
+
+			if (!mini) {
+				// Skip relocs
+				for (int rh = 0 ; rh < numhunks ; rh++) {
+					int delta;
+					do {
+						delta = decoder.decodeNumber(LZEncoder::NUM_CONTEXTS);
+					} while (delta != 2);
+				}
+			}
+		}
+		printf("DONE\n\n");
+
 		return ef;
 	}
 };
