@@ -203,9 +203,6 @@ public:
 					if (type != HUNK_BSS) {
 						hunks[h].datastart = index;
 						index += hunks[h].datasize;
-						while (hunks[h].datasize > 0 && data[hunks[h].datastart+hunks[h].datasize-1] == 0) {
-							hunks[h].datasize--;
-						}
 						if (hunks[h].datasize > 0) {
 							int sum = 0;
 							for (int pos = hunks[h].datastart ; pos < hunks[h].datastart+hunks[h].datasize ; pos++) {
@@ -458,7 +455,11 @@ public:
 	bool valid_mini() {
 		if (!(hunks[0].type == HUNK_CODE && hunks[0].relocentries == 0)) return false;
 		for (int h = 1 ; h < hunks.size() ; h++) {
-			if (!((hunks[h].type == HUNK_BSS || hunks[h].datasize == 0) && hunks[h].relocentries == 0)) return false;
+			if (hunks[h].relocentries != 0) return false;
+			if (hunks[h].type == HUNK_BSS || hunks[h].datasize == 0) continue;
+			for (int i = 0 ; i < hunks[h].datasize ; i++) {
+				if (data[hunks[h].datastart + i] != 0) return false;
+			}
 		}
 		return true;
 	}
