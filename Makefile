@@ -16,6 +16,11 @@ all: $(BUILD_DIR)/Shrinkler
 CFLAGS := -O3 -Wall -Wno-sign-compare
 LFLAGS := -s
 
+ifdef PROFILE
+CFLAGS += -fno-inline -fno-inline-functions
+LFLAGS :=
+endif
+
 ifeq ($(PLATFORM),amiga)
 
 # Amiga build, using GCC and ixemul
