@@ -27,9 +27,9 @@ the matcher skips ahead to the earliest match in the block.
 
 using std::vector;
 
-class MatchFinder {
-	static const int END_OF_CHAIN = -2;
+static const int END_OF_CHAIN = -2;
 
+class MatchFinder {
 	unsigned char *data;
 	int length;
 	int max_same_length;
