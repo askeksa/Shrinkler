@@ -18,7 +18,9 @@ using std::vector;
 
 #include "Coder.h"
 
+#ifndef ADJUST_SHIFT
 #define ADJUST_SHIFT 4
+#endif
 
 class RangeCoder : public Coder {
 	vector<unsigned short> contexts;

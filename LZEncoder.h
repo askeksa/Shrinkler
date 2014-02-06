@@ -94,6 +94,8 @@ class LZEncoder {
 		return coder->encodeNumber(NUM_SINGLE_CONTEXTS + (context_group << 8), number);
 	}
 
+	friend class LZDecoder;
+
 public:
 	static const int KIND_LIT = 0;
 	static const int KIND_REF = 1;
