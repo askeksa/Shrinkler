@@ -41,7 +41,7 @@ LIB_DIR2      := $(AMIGA_GCC_DIR)/lib/gcc/m68k-amigaos/4.5.0
 LIB_DIR3      := $(TOOLCHAIN_DIR)/ixemul-sdk/lib
 
 CC       := $(AMIGA_GCC_DIR)/bin/m68k-amigaos-g++
-CFLAGS   += -m68000 -fno-exceptions
+CFLAGS   += -m68000
 INCLUDE  := -I $(INCLUDE_DIR)/c++/4.3.2 -I $(INCLUDE_DIR)/c++/4.3.2/m68k-amigaos -I $(INCLUDE_DIR)
 
 ASM      := $(BINUTILS_DIR)/as

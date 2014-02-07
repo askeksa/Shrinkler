@@ -85,7 +85,7 @@ public:
 	}
 };
 
-int main(int argc, const char *argv[]) {
+int main2(int argc, const char *argv[]) {
 	printf("Shrinkler executable file compressor by Blueberry - version 4.0 (2014-01-05)\n\n");
 
 	vector<bool> consumed(argc);
@@ -178,4 +178,21 @@ int main(int argc, const char *argv[]) {
 	delete crunched;
 
 	return 0;
+}
+
+int main(int argc, const char *argv[]) {
+	try {
+		return main2(argc, argv);
+	} catch (std::bad_alloc& e) {
+		fflush(stdout);
+		fprintf(stderr,
+			"\n\nShrinkler ran out of memory.\n\n"
+			"Some things you can try:\n"
+			" - Free up some memory\n"
+			" - Run it on a machine with more memory\n"
+			" - Reduce the size of the reference buffer (-r option)\n"
+			" - Split up your biggest hunk into smaller ones\n\n");
+		fflush(stderr);
+		return 1;
+	}
 }
