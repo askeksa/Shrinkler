@@ -9,8 +9,9 @@ An assert function which contains a breakpoint, for ease of debugging.
 #pragma once
 
 void internal_error() {
+	fflush(stdout);
 	fprintf(stderr,
-		"\nShrinkler has encountered an internal error.\n"
+		"\n\nShrinkler has encountered an internal error.\n"
 		"Please send a bug report to blueberry@loonies.dk,\n"
 		"providing the file you tried to compress.\n"
 		"\n"
@@ -22,6 +23,7 @@ void internal_error() {
 #ifndef NDEBUG
 #include <stdio.h>
 static void _assert_func(const char *file, int line, const char *func, const char *exp) {
+	fflush(stdout);
 	fprintf(stderr, "\nassertion \"%s\" failed: file \"%s\", line %d, function: %s\n",
 			exp, file, line, func);
 	fflush(stderr);
