@@ -742,7 +742,7 @@ public:
 			}
 
 			if (error) {
-				exit(1);
+				internal_error();
 			}
 
 			if (!mini) {
