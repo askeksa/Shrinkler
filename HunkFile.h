@@ -67,13 +67,19 @@ class LZVerifier : public LZReceiver {
 	unsigned char *data;
 	int data_length;
 	int pos;
+
+	unsigned char getData(int i) {
+		if (data == NULL) return 0;
+		return data[i];
+	}
+
 public:
 	LZVerifier(int hunk, unsigned char *data, int data_length) : hunk(hunk), data(data), data_length(data_length), pos(0) {}
 
 	bool receiveLiteral(unsigned char lit) {
-		if (lit != data[pos]) {
+		if (lit != getData(pos)) {
 			printf("Verify error: literal at position %d in hunk %d has incorrect value (0x%02X, should be 0x%02X)!\n",
-				pos, hunk, lit, data[pos]);
+				pos, hunk, lit, getData(pos));
 			return false;
 		}
 		pos += 1;
@@ -92,9 +98,9 @@ public:
 			return false;
 		}
 		for (int i = 0 ; i < length ; i++) {
-			if (data[pos - offset + i] != data[pos + i]) {
+			if (getData(pos - offset + i) != getData(pos + i)) {
 				printf("Verify error: reference at position %d in hunk %d has incorrect value for byte %d of %d (0x%02X, should be 0x%02X)!\n",
-					pos, hunk, i, length, data[pos - offset + i], data[pos + i]);
+					pos, hunk, i, length, getData(pos - offset + i), getData(pos + i));
 				return false;
 			}
 		}
@@ -705,34 +711,38 @@ public:
 		RangeDecoder decoder(LZEncoder::NUM_CONTEXTS + NUM_RELOC_CONTEXTS, pack_buffer);
 		LZDecoder lzd(&decoder);
 		for (int h = 0 ; h < (mini ? 1 : numhunks) ; h++) {
+			unsigned char *hunk_data;
+			int hunk_data_length = hunks[h].datasize * 4;
 			if (hunks[h].type != HUNK_BSS) {
 				// Find hunk data
-				unsigned char *hunk_data = (unsigned char *) &data[hunks[h].datastart];
-				int hunk_data_length = hunks[h].datasize * 4;
+				hunk_data = (unsigned char *) &data[hunks[h].datastart];
 				if (mini) {
 					// Trim trailing zeros
 					while (hunk_data_length > 0 && hunk_data[hunk_data_length - 1] == 0) {
 						hunk_data_length--;
 					}
 				}
+			} else {
+				// Signal empty hunk by NULL data pointer
+				hunk_data = NULL;
+			}
 
-				// Verify data
-				bool error = false;
-				LZVerifier verifier(h, hunk_data, hunk_data_length);
-				decoder.reset();
-				if (!lzd.decode(verifier)) {
-					error = true;
-				}
+			// Verify data
+			bool error = false;
+			LZVerifier verifier(h, hunk_data, hunk_data_length);
+			decoder.reset();
+			if (!lzd.decode(verifier)) {
+				error = true;
+			}
 
-				// Check length
-				if (!error && verifier.size() != hunk_data_length) {
-					printf("Verify error: hunk %d has incorrect length (%d, should have been %d)!\n", h, verifier.size(), hunk_data_length);
-					error = true;
-				}
+			// Check length
+			if (!error && verifier.size() != hunk_data_length) {
+				printf("Verify error: hunk %d has incorrect length (%d, should have been %d)!\n", h, verifier.size(), hunk_data_length);
+				error = true;
+			}
 
-				if (error) {
-					exit(1);
-				}
+			if (error) {
+				exit(1);
 			}
 
 			if (!mini) {
@@ -745,7 +755,7 @@ public:
 				}
 			}
 		}
-		printf("DONE\n\n");
+		printf("OK\n\n");
 
 		return ef;
 	}
