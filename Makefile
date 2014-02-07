@@ -17,7 +17,7 @@ CFLAGS := -Wall -Wno-sign-compare
 LFLAGS := -s
 
 ifdef DEBUG
-CFLAGS += -g
+CFLAGS += -g -DDEBUG
 LFLAGS :=
 else
 CFLAGS += -O3
