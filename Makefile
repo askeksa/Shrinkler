@@ -13,8 +13,15 @@ MKDIR_DUMMY   := $(shell mkdir -p $(BUILD_DIR))
 all: $(BUILD_DIR)/Shrinkler
 
 # Common flags
-CFLAGS := -O3 -Wall -Wno-sign-compare
+CFLAGS := -Wall -Wno-sign-compare
 LFLAGS := -s
+
+ifdef DEBUG
+CFLAGS += -g
+LFLAGS :=
+else
+CFLAGS += -O3
+endif
 
 ifdef PROFILE
 CFLAGS += -fno-inline -fno-inline-functions
