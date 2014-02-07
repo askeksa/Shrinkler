@@ -8,6 +8,7 @@ Main file for the cruncher.
 
 #include <cstdio>
 #include <cstdlib>
+#include <sys/stat.h>
 
 #include "HunkFile.h"
 
@@ -171,6 +172,7 @@ int main(int argc, const char *argv[]) {
 
 	printf("Saving file %s...\n\n", outfile);
 	crunched->save(outfile);
+	chmod(outfile, 0755); // Mark file executable
 
 	printf("Final file size: %d\n\n", crunched->size());
 	delete crunched;
