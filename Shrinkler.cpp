@@ -6,6 +6,12 @@ Main file for the cruncher.
 
 */
 
+//#define SHRINKLER_TITLE ("Shrinkler executable file compressor by Blueberry - version 4.0 (2014-01-05)\n\n")
+
+#ifndef SHRINKLER_TITLE
+#define SHRINKLER_TITLE ("Shrinkler executable file compressor by Blueberry - development version (built " __DATE__ " " __TIME__ ")\n\n")
+#endif
+
 #include <cstdio>
 #include <cstdlib>
 #include <sys/stat.h>
@@ -86,7 +92,7 @@ public:
 };
 
 int main2(int argc, const char *argv[]) {
-	printf("Shrinkler executable file compressor by Blueberry - version 4.0 (2014-01-05)\n\n");
+	printf(SHRINKLER_TITLE);
 
 	vector<bool> consumed(argc);
 
