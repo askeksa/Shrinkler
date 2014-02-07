@@ -49,7 +49,7 @@ class RangeCoder : public Coder {
 			if (pos < 0) return;
 			longpos = pos >> 5;
 			bitmask = 0x80000000 >> (pos & 31);
-			if (longpos >= out.size()) {
+			while (longpos >= out.size()) {
 				out.push_back(0);
 			}
 			out[longpos] ^= bitmask;
