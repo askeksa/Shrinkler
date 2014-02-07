@@ -14,7 +14,10 @@ Main file for the cruncher.
 
 #include <cstdio>
 #include <cstdlib>
+#include <string>
 #include <sys/stat.h>
+
+using std::string;
 
 #include "HunkFile.h"
 
@@ -30,6 +33,8 @@ void usage() {
 	printf(" -c, --consecutive    Number of match positions to consider in same-valued blocks (default 20)\n");
 	printf(" -a, --same-length    Number of matches of the same length to consider (default 20)\n");
 	printf(" -r, --references     Number of references to keep track of during LZ parsing (default 10000)\n");
+	printf(" -t, --text           Print given text, followed by a newline, before decrunching\n");
+	printf(" -T, --textfile       Print the contents of the given file, before decrunching\n");
 	printf("\n");
 	exit(0);
 }
@@ -72,6 +77,35 @@ public:
 	}
 };
 
+class StringParameter {
+public:
+	const char *value;
+
+	StringParameter(const char *form1, const char *form2, int argc, const char *argv[], vector<bool>& consumed) {
+		value = NULL;
+		bool parsed = false;
+		for (int i = 1 ; i < argc ; i++) {
+			if (strcmp(argv[i], form1) == 0 || strcmp(argv[i], form2) == 0) {
+				if (parsed) {
+					printf("Error: %s specified multiple times.\n\n", argv[i]);
+					usage();
+				}
+				if (i+1 < argc) {
+					value = argv[i+1];
+					parsed = true;
+				}
+				if (!parsed) {
+					printf("Error: %s requires a string argument.\n\n", argv[i]);
+					usage();
+				}
+				consumed[i] = true;
+				consumed[i+1] = true;
+				i = i+1;
+			}
+		}
+	}
+};
+
 class FlagParameter {
 public:
 	bool value;
@@ -96,14 +130,16 @@ int main2(int argc, const char *argv[]) {
 
 	vector<bool> consumed(argc);
 
-	FlagParameter hunkmerge     ("-h", "--hunkmerge",                            argc, argv, consumed);
-	FlagParameter mini          ("-m", "--mini",                                 argc, argv, consumed);
-	IntParameter  iterations    ("-i", "--iterations",      1,        9,      2, argc, argv, consumed);
-	IntParameter  length_margin ("-l", "--length-margin",   0,      100,      0, argc, argv, consumed);
-	IntParameter  skip_length   ("-s", "--skip-length",     2,   100000,    200, argc, argv, consumed);
-	IntParameter  consecutive   ("-c", "--consecutive",     1,   100000,     20, argc, argv, consumed);
-	IntParameter  same_length   ("-a", "--same-length",     1,   100000,     20, argc, argv, consumed);
-	IntParameter  references    ("-r", "--references",  10000, 10000000, 100000, argc, argv, consumed);
+	FlagParameter   hunkmerge     ("-h", "--hunkmerge",                            argc, argv, consumed);
+	FlagParameter   mini          ("-m", "--mini",                                 argc, argv, consumed);
+	IntParameter    iterations    ("-i", "--iterations",      1,        9,      2, argc, argv, consumed);
+	IntParameter    length_margin ("-l", "--length-margin",   0,      100,      0, argc, argv, consumed);
+	IntParameter    skip_length   ("-s", "--skip-length",     2,   100000,    200, argc, argv, consumed);
+	IntParameter    consecutive   ("-c", "--consecutive",     1,   100000,     20, argc, argv, consumed);
+	IntParameter    same_length   ("-a", "--same-length",     1,   100000,     20, argc, argv, consumed);
+	IntParameter    references    ("-r", "--references",  10000, 10000000, 100000, argc, argv, consumed);
+	StringParameter text          ("-t", "--text",                                 argc, argv, consumed);
+	StringParameter textfile      ("-T", "--textfile",                             argc, argv, consumed);
 
 	vector<const char*> files;
 
@@ -115,6 +151,16 @@ int main2(int argc, const char *argv[]) {
 			}
 			files.push_back(argv[i]);
 		}
+	}
+
+	if (text.value && textfile.value) {
+		printf("Error: The text and textfile options cannot both be specified.\n\n");
+		usage();
+	}
+
+	if (mini.value && (text.value || textfile.value)) {
+		printf("Error: The text and textfile options cannot be used in mini mode.\n\n");
+		usage();
 	}
 
 	if (files.size() == 0) {
@@ -140,6 +186,25 @@ int main2(int argc, const char *argv[]) {
 	params.max_same_length = same_length.value;
 	params.max_consecutive = consecutive.value;
 	params.max_edges = references.value;
+
+	string *decrunch_text_ptr = NULL;
+	string decrunch_text;
+	if (text.value) {
+		decrunch_text = text.value;
+		decrunch_text.push_back('\n');
+		decrunch_text_ptr = &decrunch_text;
+	} else if (textfile.value) {
+		FILE *decrunch_text_file = fopen(textfile.value, "r");
+		if (!decrunch_text_file) {
+			printf("Error: Could not open text file %s\n", textfile.value);
+		}
+		char c;
+		while ((c = fgetc(decrunch_text_file)) != EOF) {
+			decrunch_text.push_back(c);
+		}
+		fclose(decrunch_text_file);
+		decrunch_text_ptr = &decrunch_text;
+	}
 
 	printf("Loading file %s...\n\n", infile);
 	HunkFile *orig = new HunkFile;
@@ -168,7 +233,7 @@ int main2(int argc, const char *argv[]) {
 		exit(1);
 	}
 	printf("Crunching...\n\n");
-	HunkFile *crunched = orig->crunch(&params, mini.value);
+	HunkFile *crunched = orig->crunch(&params, mini.value, decrunch_text_ptr);
 	delete orig;
 	printf("References considered: %d\nReferences discarded:  %d\n\n", RefEdge::max_edge_count, RefEdge::edges_cleaned);
 	if (!crunched->analyze()) {

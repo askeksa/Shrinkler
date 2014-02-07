@@ -1,18 +1,28 @@
 ; Copyright 1999-2014 Aske Simon Christensen. See LICENSE.txt for usage terms.
 
 ;	auto	wb\Header1\Header1_End\
+;	auto	wb\Header1T\Header1T_End\
 ;	auto	wb\Header2\Header2_End\
 
 INIT_ONE_PROB		=	$8000
 ADJUST_SHIFT		=	4
 SINGLE_BIT_CONTEXTS	=	1
 NUM_CONTEXTS		=	1536
+DUMMY_TEXT_LENGTH	=	0
 
+; Exec
 LIB_VERSION	=	20
-CacheClearU	=	-636
-FreeMem		=	-210
 Forbid		=	-132
 Permit		=	-138
+FreeMem		=	-210
+OldOpenLibrary	=	-408
+CloseLibrary	=	-414
+CacheClearU	=	-636
+
+; Dos
+Write		=	-48
+Output		=	-60
+
 
 	align	0,4
 Header1:
@@ -24,10 +34,46 @@ Header1:
 	move.l	d2,a4
 	move.l	(a4)+,d2
 	bne.b	.hunk
+
+	move.l	$4.w,a6
 	jmp	(a4)
 
 	align	0,4
 Header1_End:
+
+Header1T:
+	move.l	a3,a4
+	move.l	(a4)+,d2
+	movem.l	d0/a0/a4,-(a7)
+.hunk:	lsl.l	#2,d2
+	move.l	a4,a5
+	move.l	d2,a4
+	move.l	(a4)+,d2
+	bne.b	.hunk
+
+TextLengthInstr:
+	move.l	#DUMMY_TEXT_LENGTH,d3
+	move.l	$4.w,a6
+	lea.l	DosName(pc),a1
+	jsr	OldOpenLibrary(a6)
+	move.l	d0,a6
+	jsr	Output(a6)
+	move.l	d0,d1
+	beq.b	.noout
+	lea.l	Header1T_End(pc),a0
+	move.l	a0,d2
+	jsr	Write(a6)
+.noout:	move.l	a6,a1
+	move.l	$4.w,a6
+	jsr	CloseLibrary(a6)
+
+	jmp	(a4)
+
+DosName:
+	dc.b	"dos.library",0
+
+	align	0,4
+Header1T_End:
 
 Header2:
 	; Detach last hunk
@@ -122,7 +168,6 @@ NextHunk:
 	move.l	d4,a2
 	bne.b	HunkLoop
 End:
-	move.l	$4.w,a6
 	cmp.w	#37,LIB_VERSION(a6)
 	blt.b	.not204
 	jsr	CacheClearU(a6)
@@ -207,4 +252,7 @@ GetBitInner:
 Header2_End:
 
 	printv	Header1_End-Header1
+	printv	Header1T_End-Header1T
 	printv	Header2_End-Header2
+	printt
+	printv	TextLengthInstr+2-Header1T
