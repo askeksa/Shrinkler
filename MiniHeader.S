@@ -18,7 +18,7 @@ MiniHeader:
 	move.l	d2,a1
 	addq.l	#4,a1
 	pea.l	(a1)
-
+ContextOffsetInstr:
 	lea.l	MiniHeader_End+DUMMY_CONTEXT_OFFSET+(32768/8)*2(pc),a2
 	moveq.l	#0,d1
 .init:	move.w	#INIT_ONE_PROB,-(a2)
@@ -153,3 +153,5 @@ GetBit:
 MiniHeader_End:
 
 	printv	MiniHeader_End-MiniHeader
+	printt
+	printv	ContextOffsetInstr+2-MiniHeader

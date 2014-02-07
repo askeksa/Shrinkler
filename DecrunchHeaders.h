@@ -14,6 +14,10 @@ unsigned char Header1[] = {
 #include "Header1.dat"
 };
 
+unsigned char Header1T[] = {
+#include "Header1T.dat"
+};
+
 unsigned char Header2[] = {
 #include "Header2.dat"
 };

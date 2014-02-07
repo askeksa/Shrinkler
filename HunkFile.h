@@ -11,8 +11,10 @@ hunk merging, crunching and saving.
 
 #include <cstring>
 #include <algorithm>
+#include <string>
 
 using std::min;
+using std::string;
 
 #include "doshunks.h"
 #include "AmigaWords.h"
@@ -518,7 +520,7 @@ public:
 		return true;
 	}
 
-	HunkFile* crunch(PackParams *params, bool mini) {
+	HunkFile* crunch(PackParams *params, bool mini, string *decrunch_text) {
 		int numhunks = hunks.size();
 		int newnumhunks = numhunks+1;
 		int bufsize = data.size() * 11 / 10 + 1000;
@@ -549,11 +551,15 @@ public:
 			memcpy(&ef->data[dpos], MiniHeader, sizeof(MiniHeader));
 			dpos += sizeof(MiniHeader) / sizeof(Longword);
 		} else {
+			int header1_size = sizeof(Header1) / sizeof(Longword);
+			if (decrunch_text) {
+				header1_size = (sizeof(Header1T) + (decrunch_text->length() + 3)) / sizeof(Longword);
+			}
 			for (int h = 0 ; h < numhunks ; h++) {
 				int memsize = hunks[h].memsize;
-				if (h == 0 && memsize < sizeof(Header1) / sizeof(Longword)) {
+				if (h == 0 && memsize < header1_size) {
 					// Make space for header trampoline code
-					memsize = sizeof(Header1) / sizeof(Longword);
+					memsize = header1_size;
 				}
 				ef->data[dpos++] = memsize | hunks[h].flags;
 			}
@@ -561,9 +567,17 @@ public:
 
 			// Write header 1
 			ef->data[dpos++] = HUNK_CODE;
-			ef->data[dpos++] = sizeof(Header1) / sizeof(Longword);
-			memcpy(&ef->data[dpos], Header1, sizeof(Header1));
-			dpos += sizeof(Header1) / sizeof(Longword);
+			ef->data[dpos++] = header1_size;
+			if (decrunch_text) {
+				memset(&ef->data[dpos], 0, header1_size);
+				memcpy(&ef->data[dpos], Header1T, sizeof(Header1T));
+				char *text_dest = ((char *) &ef->data[dpos]) + sizeof(Header1T);
+				memcpy(text_dest, decrunch_text->c_str(), decrunch_text->length());
+				ef->data[dpos + 5] = decrunch_text->length();
+			} else {
+				memcpy(&ef->data[dpos], Header1, sizeof(Header1));
+			}
+			dpos += header1_size;
 
 			// Write hunks
 			for (int h = 1 ; h < numhunks ; h++) {

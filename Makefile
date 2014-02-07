@@ -103,7 +103,7 @@ $(BUILD_DIR)/%.o: %.cpp
 endif
 
 
-$(BUILD_DIR)/Shrinkler.o: *.h Header1.dat Header2.dat MiniHeader.dat
+$(BUILD_DIR)/Shrinkler.o: *.h Header1.dat Header1T.dat Header2.dat MiniHeader.dat
 
 %.dat: %.bin
 	python -c 'for b in open("$^", "rb").read(): print ("0x%02X," % ord(b)),' > $@
