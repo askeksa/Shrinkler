@@ -8,8 +8,6 @@ Abstract interface for entropy decoding.
 
 #pragma once
 
-#include "assert.h"
-
 class Decoder {
 public:
 	// Decode a bit in the given context.
