@@ -80,6 +80,7 @@ Header2:
 	clr.l	-(a5)
 
 	; Packed data Start
+ContextOffsetInstr:
 	lea.l	Header2_End(pc),a4
 
 	; Init range decoder state
@@ -256,3 +257,4 @@ Header2_End:
 	printv	Header2_End-Header2
 	printt
 	printv	TextLengthInstr+2-Header1T
+	printv	ContextOffsetInstr+2-Header2

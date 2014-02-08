@@ -35,93 +35,124 @@ void usage() {
 	printf(" -r, --references     Number of references to keep track of during LZ parsing (default 10000)\n");
 	printf(" -t, --text           Print given text, followed by a newline, before decrunching\n");
 	printf(" -T, --textfile       Print the contents of the given file, before decrunching\n");
+	printf(" -f, --flash          Poke stuff into the given address (e.g. DFF180) during decrunching\n");
 	printf("\n");
 	exit(0);
 }
 
-class IntParameter {
+class Parameter {
+public:
+	bool seen;
+
+	virtual ~Parameter() {}
+protected:
+	void parse(const char *form1, const char *form2, const char *arg_kind, int argc, const char *argv[], vector<bool>& consumed) {
+		seen = false;
+		for (int i = 1 ; i < argc ; i++) {
+			if (strcmp(argv[i], form1) == 0 || strcmp(argv[i], form2) == 0) {
+				if (seen) {
+					printf("Error: %s specified multiple times.\n\n", argv[i]);
+					usage();
+				}
+				consumed[i] = true;
+				if (arg_kind) {
+					if (i+1 < argc) {
+						seen = parseArg(argv[i], argv[i+1]);
+					}
+					if (!seen) {
+						printf("Error: %s requires a %s argument.\n\n", argv[i], arg_kind);
+						usage();
+					}
+					consumed[i+1] = true;
+					i = i+1;
+				} else {
+					seen = true;
+				}
+			}
+		}
+	}
+
+	virtual bool parseArg(const char *param, const char *arg) = 0;
+};
+
+class IntParameter : public Parameter {
+	int min_value;
+	int max_value;
 public:
 	int value;
 
 	IntParameter(const char *form1, const char *form2, int min_value, int max_value, int default_value,
-	             int argc, const char *argv[], vector<bool>& consumed) {
-		value = default_value;
-		bool parsed = false;
-		for (int i = 1 ; i < argc ; i++) {
-			if (strcmp(argv[i], form1) == 0 || strcmp(argv[i], form2) == 0) {
-				if (parsed) {
-					printf("Error: %s specified multiple times.\n\n", argv[i]);
-					usage();
-				}
-				if (i+1 < argc) {
-					const char *param = argv[i+1];
-					char *endptr;
-					value = strtol(param, &endptr, 10);
-					if (endptr == &param[strlen(param)]) {
-						if (value < min_value || value > max_value) {
-							printf("Error: Argument of %s must be between %d and %d.\n\n", argv[i], min_value, max_value);
-							usage();
-						}
-						parsed = true;
-					}
-				}
-				if (!parsed) {
-					printf("Error: %s requires a numeric argument.\n\n", argv[i]);
-					usage();
-				}
-				consumed[i] = true;
-				consumed[i+1] = true;
-				i = i+1;
+	             int argc, const char *argv[], vector<bool>& consumed)
+		: min_value(min_value), max_value(max_value), value(default_value)
+    {
+		parse(form1, form2, "numeric", argc, argv, consumed);
+    }
+
+protected:
+	virtual bool parseArg(const char *param, const char *arg) {
+		char *endptr;
+		value = strtol(arg, &endptr, 10);
+		if (endptr == &arg[strlen(arg)]) {
+			if (value < min_value || value > max_value) {
+				printf("Error: Argument of %s must be between %d and %d.\n\n", param, min_value, max_value);
+				usage();
 			}
+			return true;
 		}
+		return false;
 	}
 };
 
-class StringParameter {
+class HexParameter : public Parameter {
+public:
+	unsigned value;
+
+	HexParameter(const char *form1, const char *form2, int default_value,
+	             int argc, const char *argv[], vector<bool>& consumed)
+		: value(default_value)
+    {
+		parse(form1, form2, "hexadecimal", argc, argv, consumed);
+    }
+
+protected:
+	virtual bool parseArg(const char *param, const char *arg) {
+		char *endptr;
+		value = strtol(arg, &endptr, 16);
+		if (endptr == &arg[strlen(arg)]) {
+			return true;
+		}
+		return false;
+	}
+};
+
+class StringParameter : public Parameter {
 public:
 	const char *value;
 
-	StringParameter(const char *form1, const char *form2, int argc, const char *argv[], vector<bool>& consumed) {
-		value = NULL;
-		bool parsed = false;
-		for (int i = 1 ; i < argc ; i++) {
-			if (strcmp(argv[i], form1) == 0 || strcmp(argv[i], form2) == 0) {
-				if (parsed) {
-					printf("Error: %s specified multiple times.\n\n", argv[i]);
-					usage();
-				}
-				if (i+1 < argc) {
-					value = argv[i+1];
-					parsed = true;
-				}
-				if (!parsed) {
-					printf("Error: %s requires a string argument.\n\n", argv[i]);
-					usage();
-				}
-				consumed[i] = true;
-				consumed[i+1] = true;
-				i = i+1;
-			}
-		}
+	StringParameter(const char *form1, const char *form2, int argc, const char *argv[], vector<bool>& consumed)
+		: value(NULL)
+    {
+		parse(form1, form2, "string", argc, argv, consumed);
+    }
+
+protected:
+	virtual bool parseArg(const char *param, const char *arg) {
+		value = arg;
+		return true;
 	}
 };
 
-class FlagParameter {
+class FlagParameter : public Parameter {
 public:
-	bool value;
+	FlagParameter(const char *form1, const char *form2, int argc, const char *argv[], vector<bool>& consumed)
+	{
+		parse(form1, form2, NULL, argc, argv, consumed);
+	}
 
-	FlagParameter(const char *form1, const char *form2, int argc, const char *argv[], vector<bool>& consumed) {
-		value = false;
-		for (int i = 1 ; i < argc ; i++) {
-			if (strcmp(argv[i], form1) == 0 || strcmp(argv[i], form2) == 0) {
-				if (value) {
-					printf("Error: %s specified multiple times.\n\n", argv[i]);
-					usage();
-				}
-				value = true;
-				consumed[i] = true;
-			}
-		}
+protected:
+	virtual bool parseArg(const char *param, const char *arg) {
+		// Not used
+		return true;
 	}
 };
 
@@ -140,6 +171,7 @@ int main2(int argc, const char *argv[]) {
 	IntParameter    references    ("-r", "--references",  10000, 10000000, 100000, argc, argv, consumed);
 	StringParameter text          ("-t", "--text",                                 argc, argv, consumed);
 	StringParameter textfile      ("-T", "--textfile",                             argc, argv, consumed);
+	HexParameter    flash         ("-f", "--flash",                             0, argc, argv, consumed);
 
 	vector<const char*> files;
 
@@ -153,12 +185,12 @@ int main2(int argc, const char *argv[]) {
 		}
 	}
 
-	if (text.value && textfile.value) {
+	if (text.seen && textfile.seen) {
 		printf("Error: The text and textfile options cannot both be specified.\n\n");
 		usage();
 	}
 
-	if (mini.value && (text.value || textfile.value)) {
+	if (mini.seen && (text.seen || textfile.seen)) {
 		printf("Error: The text and textfile options cannot be used in mini mode.\n\n");
 		usage();
 	}
@@ -189,11 +221,11 @@ int main2(int argc, const char *argv[]) {
 
 	string *decrunch_text_ptr = NULL;
 	string decrunch_text;
-	if (text.value) {
+	if (text.seen) {
 		decrunch_text = text.value;
 		decrunch_text.push_back('\n');
 		decrunch_text_ptr = &decrunch_text;
-	} else if (textfile.value) {
+	} else if (textfile.seen) {
 		FILE *decrunch_text_file = fopen(textfile.value, "r");
 		if (!decrunch_text_file) {
 			printf("Error: Could not open text file %s\n", textfile.value);
@@ -214,7 +246,7 @@ int main2(int argc, const char *argv[]) {
 		delete orig;
 		exit(1);
 	}
-	if (hunkmerge.value) {
+	if (hunkmerge.seen) {
 		printf("Merging hunks...\n\n");
 		HunkFile *merged = orig->merge_hunks(orig->merged_hunklist());
 		delete orig;
@@ -225,7 +257,7 @@ int main2(int argc, const char *argv[]) {
 		}
 		orig = merged;
 	}
-	if (mini.value && !orig->valid_mini()) {
+	if (mini.seen && !orig->valid_mini()) {
 		printf("Input executable not suitable for mini crunching.\n"
 		       "Must contain only one non-empty hunk and no relocations,\n"
 		       "and the final file size must be less than 24k.\n\n");
@@ -233,7 +265,7 @@ int main2(int argc, const char *argv[]) {
 		exit(1);
 	}
 	printf("Crunching...\n\n");
-	HunkFile *crunched = orig->crunch(&params, mini.value, decrunch_text_ptr);
+	HunkFile *crunched = orig->crunch(&params, mini.seen, decrunch_text_ptr, flash.value);
 	delete orig;
 	printf("References considered: %d\nReferences discarded:  %d\n\n", RefEdge::max_edge_count, RefEdge::edges_cleaned);
 	if (!crunched->analyze()) {

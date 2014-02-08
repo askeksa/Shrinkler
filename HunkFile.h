@@ -520,7 +520,7 @@ public:
 		return true;
 	}
 
-	HunkFile* crunch(PackParams *params, bool mini, string *decrunch_text) {
+	HunkFile* crunch(PackParams *params, bool mini, string *decrunch_text, unsigned flash_address) {
 		int numhunks = hunks.size();
 		int newnumhunks = numhunks+1;
 		int bufsize = data.size() * 11 / 10 + 1000;
@@ -538,6 +538,7 @@ public:
 		ef->data[dpos++] = newnumhunks-1;
 
 		int lpos1, lpos2, ppos;
+		Word *offsetp;
 		if (mini) {
 			lpos1 = dpos++;
 			for (int h = 0 ; h < numhunks ; h++) {
@@ -550,6 +551,7 @@ public:
 			ppos = dpos;
 			memcpy(&ef->data[dpos], MiniHeader, sizeof(MiniHeader));
 			dpos += sizeof(MiniHeader) / sizeof(Longword);
+			offsetp = (Word *) (((unsigned char *) &ef->data[ppos]) + 12);
 		} else {
 			int header1_size = sizeof(Header1) / sizeof(Longword);
 			if (decrunch_text) {
@@ -599,6 +601,20 @@ public:
 			ppos = dpos;
 			memcpy(&ef->data[dpos], Header2, sizeof(Header2));
 			dpos += sizeof(Header2) / sizeof(Longword);
+			offsetp = (Word *) (((unsigned char *) &ef->data[ppos]) + 4);
+		}
+
+		if (flash_address) {
+			// Insert flashing code
+			dpos += 1;
+			for (int fpos = dpos - 1 ; fpos >= dpos - 9 ; fpos--) {
+				ef->data[fpos] = ef->data[fpos - 1];
+			}
+			Word* insts = (Word *) &ef->data[dpos - 11];
+			insts[0] = 0x33C3; // move.w d3,flash_address
+			*(Longword *)&insts[1] = flash_address;
+			insts[3] = 0x6AEC; // bpl.b readbit
+			*offsetp += 4;
 		}
 
 		vector<unsigned> pack_buffer;
@@ -696,7 +712,6 @@ public:
 			}
 
 			// Set size of data in header
-			Word *offsetp = (Word *) (((unsigned char *) &ef->data[ppos]) + 12);
 			int offset = (int) *offsetp + pack_buffer.size() * 4;
 			if (offset > 32767) {
 				printf("Size overflow: final size in mini mode must be less than 24k.\n\n");
