@@ -6,7 +6,7 @@ Main file for the cruncher.
 
 */
 
-//#define SHRINKLER_TITLE ("Shrinkler executable file compressor by Blueberry - version 4.0 (2014-01-05)\n\n")
+//#define SHRINKLER_TITLE ("Shrinkler executable file compressor by Blueberry - version 4.1 (2014-02-08)\n\n")
 
 #ifndef SHRINKLER_TITLE
 #define SHRINKLER_TITLE ("Shrinkler executable file compressor by Blueberry - development version (built " __DATE__ " " __TIME__ ")\n\n")
@@ -33,8 +33,8 @@ void usage() {
 	printf(" -c, --consecutive    Number of match positions to consider in same-valued blocks (default 20)\n");
 	printf(" -a, --same-length    Number of matches of the same length to consider (default 20)\n");
 	printf(" -r, --references     Number of references to keep track of during LZ parsing (default 10000)\n");
-	printf(" -t, --text           Print given text, followed by a newline, before decrunching\n");
-	printf(" -T, --textfile       Print the contents of the given file, before decrunching\n");
+	printf(" -t, --text           Print the given text, followed by a newline, before decrunching\n");
+	printf(" -T, --textfile       Print the contents of the given file before decrunching\n");
 	printf(" -f, --flash          Poke stuff into the given address (e.g. DFF180) during decrunching\n");
 	printf("\n");
 	exit(0);
