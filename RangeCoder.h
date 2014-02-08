@@ -118,6 +118,10 @@ public:
 			dest_bit++;
 			final_size >>= 1;
 		}
+
+		while ((dest_bit - 1) >> 5 >= out.size()) {
+			out.push_back(0);
+		}
 	}
 
 	int sizeInBits() {
