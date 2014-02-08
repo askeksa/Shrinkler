@@ -15,6 +15,7 @@ class LZReceiver {
 public:
 	virtual bool receiveLiteral(unsigned char value) = 0;
 	virtual bool receiveReference(int offset, int length) = 0;
+	virtual ~LZReceiver() {}
 };
 
 class LZDecoder {
