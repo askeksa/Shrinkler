@@ -15,9 +15,19 @@ compression, at the cost of higher time and/or memory requirements.
 
 History:
 
-1999 - 2012: Various public and internal versions.
+2014-02-08:  Version 4.1. Bug fixes and new features:
+             Fixed some bugs in the range coder.
+             Fixed handling of very small first hunk.
+             Added internal verifier to check correctness of output.
+             Print helpful text when encountering an internal error.
+             Better error message when running out of memory.
+             Set output file to be executable.
+             New options to print text from an argument or file.
+             New option to flash a hardware register during decrunching.
 
 2014-01-05:  Version 4.0. First public release with new name.
+
+1999 - 2012: Various public and internal versions.
 
 
 Source code available from https://bitbucket.org/askeksa/shrinkler
