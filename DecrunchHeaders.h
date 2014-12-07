@@ -22,6 +22,14 @@ unsigned char Header2[] = {
 #include "Header2.dat"
 };
 
+unsigned char OverlapHeader[] = {
+#include "OverlapHeader.dat"
+};
+
+unsigned char OverlapHeaderT[] = {
+#include "OverlapHeaderT.dat"
+};
+
 unsigned char MiniHeader[] = {
 #include "MiniHeader.dat"
 };
