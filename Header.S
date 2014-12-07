@@ -149,13 +149,6 @@ RelocHunk:
 	add.l	d5,(a1)
 	bra.b	.relocloop
 
-GetKind:
-	move.l	a1,d4
-	moveq.l	#1,d6
-	and.l	d4,d6
-	lsl.w	#8,d6
-GetBit:	bra.b	GetBitInner
-
 NextRelocHunk:
 	move.l	d5,a1
 	move.l	-(a1),d5
@@ -180,6 +173,13 @@ End:
 	movem.l	(a7)+,d0/a0
 	jmp	Permit(a6)
 
+
+GetKind:
+	move.l	a1,d4
+	moveq.l	#1,d6
+	and.l	d4,d6
+	lsl.w	#8,d6
+GetBit:	bra.b	GetBitInner
 
 GetNumber:
 	; D6 = Number context
@@ -236,16 +236,14 @@ GetBitInner:
 .zero:
 	; oneprob = oneprob * (1 - adjust) = oneprob - oneprob * adjust
 	sub.w	d4,d3
-	bra.b	.bitdone
+	; 0 in C and X
+	rts
 .one:
 	; onebrob = 1 - (1 - oneprob) * (1 - adjust) = oneprob - oneprob * adjust + adjust
 	add.w	#$ffff>>ADJUST_SHIFT,(a5)
 	move.w	d4,d3
 	add.w	d4,d2
-.bitdone:
-	; C = X = Bit
-
-	; Out: Bit in C and X
+	; 1 in C and X
 	rts
 
 	align	0,4
