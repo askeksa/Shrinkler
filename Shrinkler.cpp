@@ -26,6 +26,7 @@ void usage() {
 	printf("\n");
 	printf("Available options are:\n");
 	printf(" -h, --hunkmerge      Merge hunks of the same memory type\n");
+	printf(" -o, --overlap        Overlap compressed and decompressed data to save memory\n");
 	printf(" -m, --mini           Use a smaller, but more restricted decrunch header\n");
 	printf(" -i, --iterations     Number of iterations for the compression (default 2)\n");
 	printf(" -l, --length-margin  Number of shorter matches considered for each match (default 0)\n");
@@ -162,6 +163,7 @@ int main2(int argc, const char *argv[]) {
 	vector<bool> consumed(argc);
 
 	FlagParameter   hunkmerge     ("-h", "--hunkmerge",                            argc, argv, consumed);
+	FlagParameter   overlap       ("-o", "--overlap",                              argc, argv, consumed);
 	FlagParameter   mini          ("-m", "--mini",                                 argc, argv, consumed);
 	IntParameter    iterations    ("-i", "--iterations",      1,        9,      2, argc, argv, consumed);
 	IntParameter    length_margin ("-l", "--length-margin",   0,      100,      0, argc, argv, consumed);
@@ -183,6 +185,11 @@ int main2(int argc, const char *argv[]) {
 			}
 			files.push_back(argv[i]);
 		}
+	}
+
+	if (overlap.seen && mini.seen) {
+		printf("Error: The overlap and mini options cannot be used together.\n\n");
+		usage();
 	}
 
 	if (text.seen && textfile.seen) {
@@ -265,7 +272,7 @@ int main2(int argc, const char *argv[]) {
 		exit(1);
 	}
 	printf("Crunching...\n\n");
-	HunkFile *crunched = orig->crunch(&params, mini.seen, decrunch_text_ptr, flash.value);
+	HunkFile *crunched = orig->crunch(&params, overlap.seen, mini.seen, decrunch_text_ptr, flash.value);
 	delete orig;
 	printf("References considered: %d\nReferences discarded:  %d\n\n", RefEdge::max_edge_count, RefEdge::edges_cleaned);
 	if (!crunched->analyze()) {
