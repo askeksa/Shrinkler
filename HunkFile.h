@@ -513,6 +513,15 @@ public:
 		return true;
 	}
 
+	int memory_usage(bool include_last_hunk) {
+		int sum = 0;
+		int hunks_to_sum = include_last_hunk ? hunks.size() : hunks.size() - 1;
+		for (int h = 0 ; h < hunks_to_sum ; h++) {
+			sum += ((hunks[h].memsize * 4 + 4) & -8) + 8;
+		}
+		return sum;
+	}
+
 	vector<pair<unsigned, vector<int> > > merged_hunklist() {
 		int numhunks = hunks.size();
 		vector<pair<unsigned, vector<int> > > hunklist(3);
