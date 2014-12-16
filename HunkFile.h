@@ -12,9 +12,15 @@ hunk merging, crunching and saving.
 #include <cstring>
 #include <algorithm>
 #include <string>
+#include <utility>
+#include <algorithm>
 
 using std::min;
 using std::string;
+using std::pair;
+using std::make_pair;
+using std::min;
+using std::max;
 
 #include "doshunks.h"
 #include "AmigaWords.h"
@@ -64,21 +70,33 @@ public:
 	}
 };
 
-class LZVerifier : public LZReceiver {
+class LZVerifier : public LZReceiver, public CompressedDataReadListener {
 	int hunk;
 	unsigned char *data;
 	int data_length;
+	int hunk_mem;
 	int pos;
 
 	unsigned char getData(int i) {
-		if (data == NULL) return 0;
+		if (data == NULL || i >= data_length) return 0;
 		return data[i];
 	}
 
 public:
-	LZVerifier(int hunk, unsigned char *data, int data_length) : hunk(hunk), data(data), data_length(data_length), pos(0) {}
+	int compressed_longword_count;
+	int front_overlap_margin;
+
+	LZVerifier(int hunk, unsigned char *data, int data_length, int hunk_mem) : hunk(hunk), data(data), data_length(data_length), hunk_mem(hunk_mem), pos(0) {
+		compressed_longword_count = 0;
+		front_overlap_margin = 0;
+	}
 
 	bool receiveLiteral(unsigned char lit) {
+		if (pos >= hunk_mem) {
+			printf("Verify error: literal at position %d in hunk %d overflows hunk!\n",
+				pos, hunk);
+			return false;
+		}
 		if (lit != getData(pos)) {
 			printf("Verify error: literal at position %d in hunk %d has incorrect value (0x%02X, should be 0x%02X)!\n",
 				pos, hunk, lit, getData(pos));
@@ -94,9 +112,9 @@ public:
 				pos, hunk, offset);
 			return false;
 		}
-		if (length > data_length - pos) {
+		if (length > hunk_mem - pos) {
 			printf("Verify error: reference at position %d in hunk %d overflows hunk (length %d, %d bytes past end)!\n",
-				pos, hunk, length, pos + length - data_length);
+				pos, hunk, length, pos + length - hunk_mem);
 			return false;
 		}
 		for (int i = 0 ; i < length ; i++) {
@@ -113,12 +131,171 @@ public:
 	int size() {
 		return pos;
 	}
+
+	void read(int index) {
+		// Another longword of compresed data read
+		int margin = pos - compressed_longword_count * 4;
+		if (margin > front_overlap_margin) {
+			front_overlap_margin = margin;
+		}
+		compressed_longword_count += 1;
+	}
 };
 
 
 class HunkFile {
 	vector<Longword> data;
 	vector<HunkInfo> hunks;
+
+	vector<unsigned> compress_hunks(PackParams *params, bool overlap, bool mini) {
+		int numhunks = hunks.size();
+
+		vector<unsigned> pack_buffer;
+		RangeCoder *range_coder = new RangeCoder(LZEncoder::NUM_CONTEXTS + NUM_RELOC_CONTEXTS, pack_buffer);
+
+		// Print compression status header
+		const char *ordinals[] = { "st", "nd", "rd", "th" };
+		printf("Hunk  Original");
+		for (int p = 1 ; p <= params->iterations ; p++) {
+			printf("  After %d%s pass", p, ordinals[min(p,4)-1]);
+		}
+		if (!mini) {
+			printf("      Relocs");
+		}
+		printf("\n");
+
+		// Crunch the hunks, one by one.
+		for (int h = 0 ; h < (mini ? 1 : numhunks) ; h++) {
+			printf("%4d  ", h);
+			range_coder->reset();
+			switch (hunks[h].type) {
+			case HUNK_CODE:
+			case HUNK_DATA:
+				{
+					// Pack data
+					unsigned char *hunk_data = (unsigned char *) &data[hunks[h].datastart];
+					int hunk_data_length = hunks[h].datasize * 4;
+					// Trim trailing zeros
+					while (hunk_data_length > 0 && hunk_data[hunk_data_length - 1] == 0) {
+						hunk_data_length--;
+					}
+					int zero_padding = mini ? 0 : hunks[h].memsize * 4 - hunk_data_length;
+					packData(hunk_data, hunk_data_length, zero_padding, params, range_coder);
+				}
+				break;
+			default:
+				int zero_padding = mini ? 0 : hunks[h].memsize * 4;
+				packData(NULL, 0, zero_padding, params, range_coder);
+				break;
+			}
+
+			if (!mini) {
+				// Reloc table
+				int reloc_size = 0;
+				for (int rh = 0 ; rh < numhunks ; rh++) {
+					vector<int> offsets;
+					if (hunks[h].relocentries > 0) {
+						int spos = hunks[h].relocstart;
+						while (data[spos] != 0) {
+							int rn = data[spos++];
+							if (data[spos++] == rh) {
+								while (rn--) {
+									offsets.push_back(data[spos++]);
+								}
+							} else {
+								spos += rn;
+							}
+						}
+						sort(offsets.begin(), offsets.end());
+					}
+					int last_offset = -4;
+					for (int ri = 0 ; ri < offsets.size() ; ri++) {
+						int offset = offsets[ri];
+						int delta = offset - last_offset;
+						if (delta < 4) {
+							printf("\n\nError in input file: overlapping reloc entries.\n\n");
+							exit(1);
+						}
+						reloc_size += range_coder->encodeNumber(LZEncoder::NUM_CONTEXTS, delta);
+						last_offset = offset;
+					}
+					reloc_size += range_coder->encodeNumber(LZEncoder::NUM_CONTEXTS, 2);
+				}
+				printf("  %10.3f", reloc_size / (double) (8 << Coder::BIT_PRECISION));
+			}
+			printf("\n");
+			fflush(stdout);
+		}
+		range_coder->finish();
+		printf("\n");
+
+		return pack_buffer;		
+	}
+
+	vector<pair<int,int> > verify(vector<unsigned>& pack_buffer, bool overlap, bool mini) {
+		int numhunks = hunks.size();
+		vector<pair<int,int> > count_and_hunksize;
+
+		printf("Verifying... ");
+		fflush(stdout);
+		RangeDecoder decoder(LZEncoder::NUM_CONTEXTS + NUM_RELOC_CONTEXTS, pack_buffer);
+		LZDecoder lzd(&decoder);
+		for (int h = 0 ; h < (mini ? 1 : numhunks) ; h++) {
+			unsigned char *hunk_data;
+			int hunk_data_length = hunks[h].datasize * 4;
+			if (hunks[h].type != HUNK_BSS) {
+				// Find hunk data
+				hunk_data = (unsigned char *) &data[hunks[h].datastart];
+				if (mini) {
+					// Trim trailing zeros
+					while (hunk_data_length > 0 && hunk_data[hunk_data_length - 1] == 0) {
+						hunk_data_length--;
+					}
+				}
+			} else {
+				// Signal empty hunk by NULL data pointer
+				hunk_data = NULL;
+			}
+
+			// Verify data
+			bool error = false;
+			LZVerifier verifier(h, hunk_data, hunk_data_length, hunks[h].memsize * sizeof(Longword));
+			decoder.reset();
+			decoder.setListener(&verifier);
+			if (!lzd.decode(verifier)) {
+				error = true;
+			}
+
+			// Check length
+			if (!error && !mini && verifier.size() != hunks[h].memsize * sizeof(Longword)) {
+				printf("Verify error: hunk %d has incorrect length (%d, should have been %d)!\n", h, verifier.size(), hunk_data_length);
+				error = true;
+			}
+
+			if (error) {
+				internal_error();
+			}
+
+			if (!mini) {
+				// Skip relocs
+				for (int rh = 0 ; rh < numhunks ; rh++) {
+					int delta;
+					do {
+						delta = decoder.decodeNumber(LZEncoder::NUM_CONTEXTS);
+					} while (delta != 2);
+				}
+			}
+
+			int margin = verifier.front_overlap_margin;
+			int count = verifier.compressed_longword_count;
+			int min_hunksize = (margin == 0 ? 1 : (margin + 3) / 4) + count;
+			count_and_hunksize.push_back(make_pair(count, min_hunksize));
+		}
+		printf("OK\n\n");
+
+		return count_and_hunksize;
+	}
+
 public:
 	void load(const char *filename) {
 		FILE *file;
@@ -520,7 +697,10 @@ public:
 		return true;
 	}
 
-	HunkFile* crunch(PackParams *params, bool mini, string *decrunch_text, unsigned flash_address) {
+	HunkFile* crunch(PackParams *params, bool overlap, bool mini, string *decrunch_text, unsigned flash_address) {
+		vector<unsigned> pack_buffer = compress_hunks(params, overlap, mini);
+		vector<pair<int,int> > count_and_hunksize = verify(pack_buffer, overlap, mini);
+
 		int numhunks = hunks.size();
 		int newnumhunks = numhunks+1;
 		int bufsize = data.size() * 11 / 10 + 1000;
@@ -538,8 +718,30 @@ public:
 		ef->data[dpos++] = newnumhunks-1;
 
 		int lpos1, lpos2, ppos;
-		Word *offsetp;
-		if (mini) {
+		Word *offsetp = NULL;
+		if (overlap) {
+			// Write hunk memory sizes
+			lpos1 = dpos++;
+			for (int h = 0 ; h < numhunks ; h++) {
+				int hunksize = max(hunks[h].memsize, count_and_hunksize[h].second);
+				ef->data[dpos++] = hunksize | hunks[h].flags;
+			}
+
+			// Write header
+			ef->data[dpos++] = HUNK_CODE;
+			lpos2 = dpos++;
+			ppos = dpos;
+			if (decrunch_text) {
+				memcpy(&ef->data[dpos], OverlapHeaderT, sizeof(OverlapHeaderT));
+				dpos += sizeof(OverlapHeaderT) / sizeof(Longword);
+				ef->data[ppos + 4] = decrunch_text->length();
+				offsetp = (Word *) &ef->data[ppos + 10];
+			} else {
+				memcpy(&ef->data[dpos], OverlapHeader, sizeof(OverlapHeader));
+				dpos += sizeof(OverlapHeader) / sizeof(Longword);
+			}
+		} else if (mini) {
+			// Write hunk memory sizes
 			lpos1 = dpos++;
 			for (int h = 0 ; h < numhunks ; h++) {
 				ef->data[dpos++] = hunks[h].memsize | hunks[h].flags;
@@ -614,88 +816,34 @@ public:
 			insts[0] = 0x33C3; // move.w d3,flash_address
 			*(Longword *)&insts[1] = flash_address;
 			insts[3] = 0x6AEC; // bpl.b readbit
-			*offsetp += 4;
+			if (offsetp) *offsetp += 4;
 		}
 
-		vector<unsigned> pack_buffer;
-		RangeCoder *range_coder = new RangeCoder(LZEncoder::NUM_CONTEXTS + NUM_RELOC_CONTEXTS, pack_buffer);
-
-		// Print compression status header
-		const char *ordinals[] = { "st", "nd", "rd", "th" };
-		printf("Hunk  Original");
-		for (int p = 1 ; p <= params->iterations ; p++) {
-			printf("  After %d%s pass", p, ordinals[min(p,4)-1]);
-		}
-		if (!mini) {
-			printf("      Relocs");
-		}
-		printf("\n");
-
-		// Crunch the hunks, one by one.
-		for (int h = 0 ; h < (mini ? 1 : numhunks) ; h++) {
-			printf("%4d  ", h);
-			range_coder->reset();
-			switch (hunks[h].type) {
-			case HUNK_CODE:
-			case HUNK_DATA:
-				{
-					// Pack data
-					unsigned char *hunk_data = (unsigned char *) &data[hunks[h].datastart];
-					int hunk_data_length = hunks[h].datasize * 4;
-					// Trim trailing zeros
-					while (hunk_data_length > 0 && hunk_data[hunk_data_length - 1] == 0) {
-						hunk_data_length--;
-					}
-					int zero_padding = mini ? 0 : hunks[h].memsize * 4 - hunk_data_length;
-					packData(hunk_data, hunk_data_length, zero_padding, params, range_coder);
-				}
-				break;
-			default:
-				int zero_padding = mini ? 0 : hunks[h].memsize * 4;
-				packData(NULL, 0, zero_padding, params, range_coder);
-				break;
+		if (overlap) {
+			// Write decrunch text
+			if (decrunch_text) {
+				int rounded_text_size = (decrunch_text->length() + 3) & -4;
+				memset(&ef->data[dpos], 0, rounded_text_size);
+				memcpy(&ef->data[dpos], decrunch_text->c_str(), decrunch_text->length());
+				dpos += rounded_text_size / sizeof(Longword);
 			}
 
-			if (!mini) {
-				// Reloc table
-				int reloc_size = 0;
-				for (int rh = 0 ; rh < numhunks ; rh++) {
-					vector<int> offsets;
-					if (hunks[h].relocentries > 0) {
-						int spos = hunks[h].relocstart;
-						while (data[spos] != 0) {
-							int rn = data[spos++];
-							if (data[spos++] == rh) {
-								while (rn--) {
-									offsets.push_back(data[spos++]);
-								}
-							} else {
-								spos += rn;
-							}
-						}
-						sort(offsets.begin(), offsets.end());
-					}
-					int last_offset = -4;
-					for (int ri = 0 ; ri < offsets.size() ; ri++) {
-						int offset = offsets[ri];
-						int delta = offset - last_offset;
-						if (delta < 4) {
-							printf("\n\nError in input file: overlapping reloc entries.\n\n");
-							exit(1);
-						}
-						reloc_size += range_coder->encodeNumber(LZEncoder::NUM_CONTEXTS, delta);
-						last_offset = offset;
-					}
-					reloc_size += range_coder->encodeNumber(LZEncoder::NUM_CONTEXTS, 2);
-				}
-				printf("  %10.3f", reloc_size / (double) (8 << Coder::BIT_PRECISION));
-			}
-			printf("\n");
-			fflush(stdout);
-		}
-		range_coder->finish();
+			// Set hunk sizes
+			ef->data[lpos1] = dpos-ppos;
+			ef->data[lpos2] = dpos-ppos;
 
-		if (mini) {
+			// Write hunks
+			int packed_index = 0;
+			for (int h = 0 ; h < numhunks ; h++) {
+				ef->data[dpos++] = HUNK_DATA;
+				int longwords_in_hunk = min<int>(count_and_hunksize[h].first, pack_buffer.size() - packed_index);
+				ef->data[dpos++] = longwords_in_hunk + 1;
+				ef->data[dpos++] = count_and_hunksize[h].first * 4;
+				for (int i = 0 ; i < longwords_in_hunk ; i++) {
+					ef->data[dpos++] = pack_buffer[packed_index++];
+				}
+			}
+		} else if (mini) {
 			// Write compressed data backwards
 			for (int i = pack_buffer.size()-1 ; i >= 0 ; i--) {
 				ef->data[dpos++] = pack_buffer[i];
@@ -733,58 +881,6 @@ public:
 		ef->data[dpos++] = HUNK_END;
 		// Note resulting file size
 		ef->data.resize(dpos);
-		printf("\n");
-
-		printf("Verifying... ");
-		fflush(stdout);
-		RangeDecoder decoder(LZEncoder::NUM_CONTEXTS + NUM_RELOC_CONTEXTS, pack_buffer);
-		LZDecoder lzd(&decoder);
-		for (int h = 0 ; h < (mini ? 1 : numhunks) ; h++) {
-			unsigned char *hunk_data;
-			int hunk_data_length = hunks[h].datasize * 4;
-			if (hunks[h].type != HUNK_BSS) {
-				// Find hunk data
-				hunk_data = (unsigned char *) &data[hunks[h].datastart];
-				if (mini) {
-					// Trim trailing zeros
-					while (hunk_data_length > 0 && hunk_data[hunk_data_length - 1] == 0) {
-						hunk_data_length--;
-					}
-				}
-			} else {
-				// Signal empty hunk by NULL data pointer
-				hunk_data = NULL;
-			}
-
-			// Verify data
-			bool error = false;
-			LZVerifier verifier(h, hunk_data, hunk_data_length);
-			decoder.reset();
-			if (!lzd.decode(verifier)) {
-				error = true;
-			}
-
-			// Check length
-			if (!error && verifier.size() != hunk_data_length) {
-				printf("Verify error: hunk %d has incorrect length (%d, should have been %d)!\n", h, verifier.size(), hunk_data_length);
-				error = true;
-			}
-
-			if (error) {
-				internal_error();
-			}
-
-			if (!mini) {
-				// Skip relocs
-				for (int rh = 0 ; rh < numhunks ; rh++) {
-					int delta;
-					do {
-						delta = decoder.decodeNumber(LZEncoder::NUM_CONTEXTS);
-					} while (delta != 2);
-				}
-			}
-		}
-		printf("OK\n\n");
 
 		return ef;
 	}

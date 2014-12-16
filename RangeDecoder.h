@@ -22,23 +22,33 @@ using std::vector;
 #define ADJUST_SHIFT 4
 #endif
 
+class CompressedDataReadListener {
+public:
+	virtual void read(int index) = 0;
+
+	virtual ~CompressedDataReadListener() {}
+};
+
 class RangeDecoder : public Decoder {
 	vector<unsigned short> contexts;
 	vector<unsigned>& data;
+	CompressedDataReadListener* listener;
 	int bit_index;
 	unsigned intervalsize;
 	unsigned intervalvalue;
 	unsigned uncertainty;
 
 	int getBit() {
-		if (bit_index >= data.size() * 32) {
+		int long_index = bit_index >> 5;
+		int bit_in_long = (~bit_index) & 31;
+		if (bit_in_long == 31) {
+			if (listener) listener->read(long_index);
+		}
+		if (bit_index++ >= data.size() * 32) {
 			uncertainty <<= 1;
 			return 0;
 		}
-		int long_index = bit_index >> 5;
-		int bit_in_long = (~bit_index) & 31;
 		int bit = (data[long_index] >> bit_in_long) & 1;
-		bit_index++;
 		return bit;
 	}
 
@@ -49,6 +59,7 @@ public:
 		intervalsize = 1;
 		intervalvalue = 0;
 		uncertainty = 1;
+		listener = NULL;
 	}
 
 	virtual int decode(int context_index) {
@@ -86,4 +97,7 @@ public:
 		fill(contexts.begin(), contexts.end(), 0x8000);
 	}
 
+	void setListener(CompressedDataReadListener* listener) {
+		this->listener = listener;
+	}
 };
