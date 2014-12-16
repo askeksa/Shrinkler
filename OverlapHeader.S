@@ -36,12 +36,13 @@ TextLengthInstr:
 	jsr	OldOpenLibrary(a6)
 	move.l	d0,a6
 	jsr	Output(a6)
-	move.l	d0,d2
-	beq.b	.noout
+	move.l	d0,d1
+	beq.b	noout
+TextOffsetInstr:
 	lea.l	OverlapHeader_End(pc),a0
-	move.l	a0,d4
+	move.l	a0,d2
 	jsr	Write(a6)
-.noout:	move.l	a6,a1
+noout:	move.l	a6,a1
 	move.l	$4.w,a6
 	jsr	CloseLibrary(a6)
 	movem.l	(a7)+,d0/a0
@@ -56,11 +57,9 @@ TextLengthInstr:
 	move.l	a3,a2
 HunkLoop:
 	; Move packed data to end of hunk
-	move.l	a2,a1
-	move.l	-(a1),d6
-	addq.l	#8,a1
-	lsl.l	#2,d6
-	lea.l	(a1,d6.l),a4
+	move.l	a2,a4
+	add.l	-(a4),a4
+	lea.l	4(a2),a1
 	move.l	(a1),d6
 .move:	move.l	(a1,d6.l),-(a4)
 	subq.l	#4,d6
@@ -141,6 +140,11 @@ End:
 .not204:
 	jmp	4(a3)
 
+	if	TEXT
+DosName:
+	dc.b	"dos.library",0
+	endc
+
 
 GetKind:
 	move.l	a1,d4
@@ -214,11 +218,6 @@ GetBitInner:
 	; 1 in C and X
 	rts
 
-	if	TEXT
-DosName:
-	dc.b	"dos.library",0
-	endc
-
 	align	0,4
 
 OverlapHeader_End:
@@ -227,4 +226,5 @@ OverlapHeader_End:
 	if	TEXT
 	printt
 	printv	TextLengthInstr+2-OverlapHeader
+	printv	TextOffsetInstr+2-OverlapHeader
 	endc
