@@ -271,14 +271,21 @@ int main2(int argc, const char *argv[]) {
 		delete orig;
 		exit(1);
 	}
+	int orig_mem = orig->memory_usage(true);
 	printf("Crunching...\n\n");
 	HunkFile *crunched = orig->crunch(&params, overlap.seen, mini.seen, decrunch_text_ptr, flash.value);
 	delete orig;
-	printf("References considered: %d\nReferences discarded:  %d\n\n", RefEdge::max_edge_count, RefEdge::edges_cleaned);
+	printf("References considered:%8d\n",   RefEdge::max_edge_count);
+	printf("References discarded: %8d\n\n", RefEdge::edges_cleaned);
 	if (!crunched->analyze()) {
 		printf("\nError while analyzing crunched file!\n\n");
 		delete crunched;
 	}
+	int crunched_mem_during = crunched->memory_usage(true);
+	int crunched_mem_after = crunched->memory_usage(mini.seen || overlap.seen);
+
+	printf("Memory overhead during decrunching:  %9d\n",   crunched_mem_during - orig_mem);
+	printf("Memory overhead after decrunching:   %9d\n\n", crunched_mem_after - orig_mem);
 
 	printf("Saving file %s...\n\n", outfile);
 	crunched->save(outfile);
