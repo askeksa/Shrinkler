@@ -15,6 +15,10 @@ compression, at the cost of higher time and/or memory requirements.
 
 History:
 
+2014-12-16:  Version 4.2. For memory-efficient decrunching:
+             Option to overlap compressed and decompressed data.
+             Verifier accepts partially filled hunks.
+
 2014-02-08:  Version 4.1. Bug fixes and new features:
              Fixed some bugs in the range coder.
              Fixed handling of very small first hunk.
