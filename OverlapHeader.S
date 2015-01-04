@@ -1,4 +1,4 @@
-; Copyright 1999-2014 Aske Simon Christensen. See LICENSE.txt for usage terms.
+; Copyright 1999-2015 Aske Simon Christensen. See LICENSE.txt for usage terms.
 
 TEXT	=	0
 

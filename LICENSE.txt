@@ -1,7 +1,7 @@
 
 Shrinkler executable file compressor for Amiga
 
-Copyright 1999-2014 Aske Simon Christensen, with exceptions noted below.
+Copyright 1999-2015 Aske Simon Christensen, with exceptions noted below.
 
 Permission is hereby granted to anyone obtaining a copy of this software
 package (including accompanying documentation) to compile, use, copy,
