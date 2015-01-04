@@ -42,7 +42,7 @@ public:
 	virtual void begin(int size) {
 		this->size = size;
 		steps = 0;
-		next_step_threshold = size / 100;
+		next_step_threshold = size / 1000;
 		print();
 	}
 
