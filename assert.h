@@ -22,10 +22,9 @@ void internal_error() {
 
 #ifndef NDEBUG
 #include <stdio.h>
-static void _assert_func(const char *file, int line, const char *func, const char *exp) {
+static void _assert_func(const char *file, int line, const char *exp) {
 	fflush(stdout);
-	fprintf(stderr, "\nassertion \"%s\" failed: file \"%s\", line %d, function: %s\n",
-			exp, file, line, func);
+	fprintf(stderr, "\n\nassertion \"%s\" failed: file \"%s\", line %d\n", exp, file, line);
 	fflush(stderr);
 #ifdef DEBUG
 	__asm volatile ("int3;");
@@ -33,6 +32,6 @@ static void _assert_func(const char *file, int line, const char *func, const cha
 	internal_error();
 }
 #undef assert
-#define assert(__e) ((__e) ? (void)0 : _assert_func (__FILE__, __LINE__, __PRETTY_FUNCTION__, #__e))
+#define assert(__e) ((__e) ? (void)0 : _assert_func (__FILE__, __LINE__, #__e))
 #endif
 
