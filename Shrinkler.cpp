@@ -24,19 +24,19 @@ using std::string;
 void usage() {
 	printf("Usage: Shrinkler <options> <input executable> <output executable>\n");
 	printf("\n");
-	printf("Available options are:\n");
+	printf("Available options are (default values in parentheses):\n");
 	printf(" -h, --hunkmerge      Merge hunks of the same memory type\n");
 	printf(" -o, --overlap        Overlap compressed and decompressed data to save memory\n");
 	printf(" -m, --mini           Use a smaller, but more restricted decrunch header\n");
-	printf(" -i, --iterations     Number of iterations for the compression (default 2)\n");
-	printf(" -l, --length-margin  Number of shorter matches considered for each match (default 0)\n");
-	printf(" -s, --skip-length    Minimum match length to accept greedily (default 200)\n");
-	printf(" -c, --consecutive    Number of match positions to consider in same-valued blocks (default 20)\n");
-	printf(" -a, --same-length    Number of matches of the same length to consider (default 20)\n");
-	printf(" -r, --references     Number of references to keep track of during LZ parsing (default 10000)\n");
-	printf(" -t, --text           Print the given text, followed by a newline, before decrunching\n");
+	printf(" -i, --iterations     Number of iterations for the compression (2)\n");
+	printf(" -l, --length-margin  Number of shorter matches considered for each match (0)\n");
+	printf(" -s, --skip-length    Minimum match length to accept greedily (200)\n");
+	printf(" -c, --consecutive    Number of matches to consider in same-valued spans (20)\n");
+	printf(" -a, --same-length    Number of matches of the same length to consider (20)\n");
+	printf(" -r, --references     Number of reference edges to keep in memory (100000)\n");
+	printf(" -t, --text           Print a text, followed by a newline, before decrunching\n");
 	printf(" -T, --textfile       Print the contents of the given file before decrunching\n");
-	printf(" -f, --flash          Poke stuff into the given address (e.g. DFF180) during decrunching\n");
+	printf(" -f, --flash          Poke into a register (e.g. DFF180) during decrunching\n");
 	printf("\n");
 	exit(0);
 }
