@@ -262,7 +262,6 @@ public:
 		encoderp = &encoder;
 
 		// Reset state
-		edges_to_pos.clear();
 		best_for_offset.clear();
 		root_edges.clear();
 		RefEdge::edges_cleaned = 0;
