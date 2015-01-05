@@ -38,10 +38,12 @@ parses to free up space.
 #include <list>
 #include <algorithm>
 
-using std::vector;
 using std::map;
+using std::max;
+using std::min;
 using std::pair;
 using std::sort;
+using std::vector;
 
 #include "LZEncoder.h"
 #include "MatchFinder.h"
@@ -67,9 +69,7 @@ class RefEdge {
 		if (source != NULL) {
 			source->refcount++;
 		}
-		if (++edge_count > max_edge_count) {
-			max_edge_count = edge_count;
-		}
+		max_edge_count = max(max_edge_count, ++edge_count);
 	}
 
 	~RefEdge() {
@@ -264,6 +264,7 @@ public:
 		// Reset state
 		best_for_offset.clear();
 		root_edges.clear();
+		int prev_edges_cleaned = RefEdge::edges_cleaned;
 		RefEdge::edges_cleaned = 0;
 
 		// Accumulate literal sizes
@@ -311,9 +312,7 @@ public:
 						newEdge(best_for_offset[offset], pos, offset, length);
 					}
 				}
-				if (match_length > max_match_length) {
-					max_match_length = match_length;
-				}
+				max_match_length = max(max_match_length, match_length);
 			}
 
 			// If we have a very long match, skip ahead
@@ -361,6 +360,8 @@ public:
 		assert(RefEdge::edge_count == 0);
 
 		progress->end();
+
+		RefEdge::edges_cleaned = max(RefEdge::edges_cleaned, prev_edges_cleaned);
 
 		return result;
 	}
