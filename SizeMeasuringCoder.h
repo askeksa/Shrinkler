@@ -26,7 +26,7 @@ class SizeMeasuringCoder : public Coder {
 	vector<ContextSizes> context_sizes;
 
 	int sizeForCount(int count, int total) {
-		int size = (int) floor(0.5 + log(total / (double) count) / log(2) * (1 << BIT_PRECISION));
+		int size = (int) floor(0.5 + log(total / (double) count) / log(2.0) * (1 << BIT_PRECISION));
 		if (size < MIN_SIZE) size = MIN_SIZE;
 		if (size > MAX_SIZE) size = MAX_SIZE;
 		return size;

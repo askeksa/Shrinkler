@@ -34,7 +34,7 @@ class RangeCoder : public Coder {
 
 	static bool init_sizetable() {
 		for (int i = 0 ; i < 128 ; i++) {
-			sizetable[i] = (int) round((8.0 - log(128 + i) / log(2)) * (1 << BIT_PRECISION));
+			sizetable[i] = (int) floor(0.5 + (8.0 - log((double) (128 + i)) / log(2.0)) * (1 << BIT_PRECISION));
 		}
 
 		return true;
