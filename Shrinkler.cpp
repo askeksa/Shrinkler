@@ -289,7 +289,9 @@ int main2(int argc, const char *argv[]) {
 
 	printf("Saving file %s...\n\n", outfile);
 	crunched->save(outfile);
+#ifdef S_IRWXU // Is the POSIX file permission API available?
 	chmod(outfile, 0755); // Mark file executable
+#endif
 
 	printf("Final file size: %d\n\n", crunched->size());
 	delete crunched;
