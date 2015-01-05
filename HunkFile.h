@@ -147,7 +147,7 @@ class HunkFile {
 	vector<Longword> data;
 	vector<HunkInfo> hunks;
 
-	vector<unsigned> compress_hunks(PackParams *params, bool overlap, bool mini) {
+	vector<unsigned> compress_hunks(PackParams *params, bool overlap, bool mini, bool show_progress) {
 		int numhunks = hunks.size();
 
 		vector<unsigned> pack_buffer;
@@ -180,12 +180,12 @@ class HunkFile {
 						hunk_data_length--;
 					}
 					int zero_padding = mini ? 0 : hunks[h].memsize * 4 - hunk_data_length;
-					packData(hunk_data, hunk_data_length, zero_padding, params, range_coder);
+					packData(hunk_data, hunk_data_length, zero_padding, params, range_coder, show_progress);
 				}
 				break;
 			default:
 				int zero_padding = mini ? 0 : hunks[h].memsize * 4;
-				packData(NULL, 0, zero_padding, params, range_coder);
+				packData(NULL, 0, zero_padding, params, range_coder, show_progress);
 				break;
 			}
 
@@ -706,8 +706,8 @@ public:
 		return true;
 	}
 
-	HunkFile* crunch(PackParams *params, bool overlap, bool mini, string *decrunch_text, unsigned flash_address) {
-		vector<unsigned> pack_buffer = compress_hunks(params, overlap, mini);
+	HunkFile* crunch(PackParams *params, bool overlap, bool mini, string *decrunch_text, unsigned flash_address, bool show_progress) {
+		vector<unsigned> pack_buffer = compress_hunks(params, overlap, mini, show_progress);
 		vector<pair<int,int> > count_and_hunksize = verify(pack_buffer, overlap, mini);
 
 		int numhunks = hunks.size();
