@@ -37,6 +37,7 @@ void usage() {
 	printf(" -t, --text           Print a text, followed by a newline, before decrunching\n");
 	printf(" -T, --textfile       Print the contents of the given file before decrunching\n");
 	printf(" -f, --flash          Poke into a register (e.g. DFF180) during decrunching\n");
+	printf(" -p, --no-progress    Do not print progress info: no ANSI codes in output\n");
 	printf("\n");
 	exit(0);
 }
@@ -174,6 +175,7 @@ int main2(int argc, const char *argv[]) {
 	StringParameter text          ("-t", "--text",                                 argc, argv, consumed);
 	StringParameter textfile      ("-T", "--textfile",                             argc, argv, consumed);
 	HexParameter    flash         ("-f", "--flash",                             0, argc, argv, consumed);
+	FlagParameter   no_progress   ("-p", "--no-progress",                          argc, argv, consumed);
 
 	vector<const char*> files;
 
@@ -273,7 +275,7 @@ int main2(int argc, const char *argv[]) {
 	}
 	int orig_mem = orig->memory_usage(true);
 	printf("Crunching...\n\n");
-	HunkFile *crunched = orig->crunch(&params, overlap.seen, mini.seen, decrunch_text_ptr, flash.value);
+	HunkFile *crunched = orig->crunch(&params, overlap.seen, mini.seen, decrunch_text_ptr, flash.value, !no_progress.seen);
 	delete orig;
 	printf("References considered:%8d\n",   RefEdge::max_edge_count);
 	printf("References discarded: %8d\n\n", RefEdge::edges_cleaned);

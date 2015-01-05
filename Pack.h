@@ -63,7 +63,20 @@ public:
 	}
 };
 
-void packData(unsigned char *data, int data_length, int zero_padding, PackParams *params, Coder *result_coder) {
+class NoProgress : public LZProgress {
+public:
+	virtual void begin(int size) {
+		fflush(stdout);
+	}
+
+	virtual void update(int pos) {
+	}
+
+	virtual void end() {
+	}
+};
+
+void packData(unsigned char *data, int data_length, int zero_padding, PackParams *params, Coder *result_coder, bool show_progress) {
 	MatchFinder finder(data, data_length, params->max_same_length, params->max_consecutive);
 	LZParser parser(data, data_length, zero_padding, finder, params->length_margin, params->skip_length, params->max_edges);
 	int real_size = 0;
@@ -71,16 +84,21 @@ void packData(unsigned char *data, int data_length, int zero_padding, PackParams
 	int best_result = 0;
 	vector<LZParseResult> results(2);
 	CountingCoder *counting_coder = new CountingCoder(LZEncoder::NUM_CONTEXTS);
+	LZProgress *progress;
+	if (show_progress) {
+		progress = new PackProgress();
+	} else {
+		progress = new NoProgress();
+	}
 	printf("%8d", data_length);
 	for (int i = 0 ; i < params->iterations ; i++) {
 		printf("  ");
 
 		// Parse data into LZ symbols
 		LZParseResult& result = results[1 - best_result];
-		PackProgress progress;
 		Coder *measurer = new SizeMeasuringCoder(counting_coder);
 		finder.reset();
-		result = parser.parse(LZEncoder(measurer), &progress);
+		result = parser.parse(LZEncoder(measurer), progress);
 
 		// Encode result using adaptive range coding
 		vector<unsigned> dummy_result;
@@ -108,6 +126,7 @@ void packData(unsigned char *data, int data_length, int zero_padding, PackParams
 		delete old_counting_coder;
 		delete new_counting_coder;
 	}
+	delete progress;
 	delete counting_coder;
 
 	results[best_result].encode(LZEncoder(result_coder));
