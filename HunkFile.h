@@ -15,12 +15,11 @@ hunk merging, crunching and saving.
 #include <utility>
 #include <algorithm>
 
-using std::min;
-using std::string;
-using std::pair;
 using std::make_pair;
-using std::min;
 using std::max;
+using std::min;
+using std::pair;
+using std::string;
 
 #include "doshunks.h"
 #include "AmigaWords.h"
