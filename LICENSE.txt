@@ -13,12 +13,13 @@ following conditions:
 - Distribution in binary form must not be misattributed, i.e. you must
   not claim (implicitly or explicitly) that you wrote it yourself.
 
-- Distribution of the decrunch headers (Header.*, MiniHeader.*) in binary
-  form as part of an Amiga executable is not restricted by this license
-  and does not require attribution. In particular, output executables
-  from Shrinkler (which contain code from the decrunch headers) are to be
-  considered original works of the author(s) of the corresponding input
-  executables.
+- Distribution of the decrunch headers (Header.S, MiniHeader.S,
+  OverlapHeader.S, and the .bin and .dat files generated from them) in
+  binary form as part of an Amiga executable is not restricted by this
+  license and does not require attribution.
+  In particular, output executables from Shrinkler (which contain code
+  from the decrunch headers) are to be considered original works of the
+  author(s) of the corresponding input executables.
 
 Exceptions:
 
