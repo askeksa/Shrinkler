@@ -15,6 +15,13 @@ compression, at the cost of higher time and/or memory requirements.
 
 History:
 
+2015-01-05:  Version 4.3. Minor fixes:
+             Usage information adjusted to fit within 77 columns.
+             References discarded metric computed properly.
+             First progress step is at 0.1% rather than 1.0%.
+             Option to omit progress output (for non-ANSI consoles).
+             Source changes for easier compilation with MSVC.
+
 2014-12-16:  Version 4.2. For memory-efficient decrunching:
              Option to overlap compressed and decompressed data.
              Print memory overhead during and after decrunching.
