@@ -47,6 +47,6 @@ Source code available from https://bitbucket.org/askeksa/shrinkler
 
 For questions and comments, visit the ADA forum at
 
-http://ada.untergrund.net/forum/index.php?action=vthread&forum=4&topic=264
+http://ada.untergrund.net/?p=boardthread&id=264
 
 or write to blueberry at loonies dot dk.
