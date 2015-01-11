@@ -97,6 +97,7 @@ void packData(unsigned char *data, int data_length, int zero_padding, PackParams
 		// Parse data into LZ symbols
 		LZParseResult& result = results[1 - best_result];
 		Coder *measurer = new SizeMeasuringCoder(counting_coder);
+		measurer->setNumberContexts(LZEncoder::NUMBER_CONTEXT_OFFSET, LZEncoder::NUM_NUMBER_CONTEXTS, data_length);
 		finder.reset();
 		result = parser.parse(LZEncoder(measurer), progress);
 

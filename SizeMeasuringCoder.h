@@ -36,6 +36,7 @@ public:
 	SizeMeasuringCoder(int n_contexts) {
 		struct ContextSizes default_sizes = { { 1 << BIT_PRECISION, 1 << BIT_PRECISION } };
 		context_sizes.resize(n_contexts, default_sizes);
+		setCacheable(true);
 	}
 
 	SizeMeasuringCoder(CountingCoder *counting_coder) {
@@ -50,6 +51,7 @@ public:
 			s.sizes[1] = sizeForCount(count1, sum);
 			context_sizes[i] = s;
 		}
+		setCacheable(true);
 	}
 
 	virtual int code(int context_index, int bit) {

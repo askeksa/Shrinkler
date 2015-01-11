@@ -101,6 +101,8 @@ public:
 	static const int KIND_REF = 1;
 
 	static const int NUM_CONTEXTS = (NUM_SINGLE_CONTEXTS + NUM_CONTEXT_GROUPS * CONTEXT_GROUP_SIZE);
+	static const int NUMBER_CONTEXT_OFFSET = (NUM_SINGLE_CONTEXTS + CONTEXT_GROUP_OFFSET * CONTEXT_GROUP_SIZE);
+	static const int NUM_NUMBER_CONTEXTS = 2;
 
 	LZEncoder(Coder *coder) : coder(coder) {
 
