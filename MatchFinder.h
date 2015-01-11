@@ -4,100 +4,209 @@
 
 Find repeated strings in a data block.
 
-Matches are reported from nearest (lowest offset, highest position)
-to farthest (highest offset, lowest position). A match with a
-higher offset is only reported if it is at least as long as the
-previous match.
+Matches are reported from longest to shortest. A match is only reported
+if it is closer (smaller offset, higher position) than all longer matches.
 
 Two parameters control the speed/precision tradeoff of the matcher:
 
-The max_same_length parameter controls how many matches of the same
-length are reported before the matcher skips ahead to the first longer
-match.
+The match_patience parameter controls how many matches outside the current
+reporting range (between last longer match and current position) are skipped
+before the matcher gives up finding more matches.
 
-The max_consecutive parameter controls how many matches with a distance
-of one byte (i.e. in a block of same-valued bytes) are reported before
-the matcher skips ahead to the earliest match in the block.
+The max_same_length parameter controls how many matches of the same length
+are reported. The matches reported will be the closest ones of that length.
 
 */
 
 #pragma once
 
 #include <vector>
+#include <algorithm>
+#include <queue>
 
 using std::vector;
 
-static const int END_OF_CHAIN = -2;
-
 class MatchFinder {
+	// Inputs
 	unsigned char *data;
 	int length;
+	int min_length;
+	int match_patience;
 	int max_same_length;
-	int max_consecutive;
 
+	// Suffix array
+	vector<int> suffix_array;
+	vector<int> rev_suffix_array;
+	vector<int> longest_common_prefix;
+
+	// Matcher parameters
 	int current_pos;
-	int match_pos;
-	int longest_match;
-	int consecutive;
-	int same_length;
-	vector<int> last_match;
-	vector<int> same_match;
+	int min_pos;
+
+	// Matcher state
+	int left_index;
+	int left_length;
+	int right_index;
+	int right_length;
+
+	// Filter state
+	int current_length;
+	std::priority_queue<int, vector<int>, std::greater<int> > match_buffer;
+
+	struct suffix_compare {
+		MatchFinder* finder;
+
+		suffix_compare(MatchFinder* finder) : finder(finder) {}
+
+		bool operator()(int a, int b) {
+			vector<int>& same = finder->rev_suffix_array;
+			unsigned char *data = finder->data;
+			if (a == b) return false;
+			if (data[a] == data[b]) {
+				int skip = std::min(same[a], same[b]);
+				a += skip;
+				b += skip;
+			}
+			int until_end = finder->length - std::max(a,b);
+			for (int i = 0 ; i < until_end ; i++) {
+				if (data[a + i] != data[b + i]) {
+					return data[a + i] < data[b + i];
+				}
+			}
+			return a < b;
+
+		}
+	};
+
+	// Quick'n'dirty suffix array construction:
+	// plain sorting with accelleration of same-value blocks
+	void make_suffix_array() {
+		// Temporary same-value block accelleration array
+		rev_suffix_array.resize(length + 1);
+		int count = 0;
+		char c = 0;
+		rev_suffix_array[length] = 0;
+		for (int i = length - 1 ; i >= 0 ; i--) {
+			if (data[i] != c) count = 0;
+			rev_suffix_array[i] = ++count;
+			c = data[i];
+		}
+
+		// Compute suffix array
+		suffix_array.resize(length + 1);
+		for (int i = 0 ; i <= length ; i++) {
+			suffix_array[i] = i;
+		}
+		std::sort(&suffix_array[0], &suffix_array[length], suffix_compare(this));
+
+		// Compute LCP array
+		longest_common_prefix.resize(length + 1);
+		longest_common_prefix[0] = 0;
+		longest_common_prefix[length] = 0;
+		for (int i = 1 ; i < length ; i++) {
+			int a = suffix_array[i - 1];
+			int b = suffix_array[i];
+			int lcp = 0;
+			if (data[a] == data[b]) {
+				lcp = std::min(rev_suffix_array[a], rev_suffix_array[b]);
+				a += lcp;
+				b += lcp;
+				int until_end = length - std::max(a,b);
+				for (int i = 0 ; i < until_end ; i++) {
+					if (data[a + i] != data[b + i]) break;
+					lcp++;
+				}
+			}
+			longest_common_prefix[i] = lcp;
+		}
+
+		// Compute reverse suffix array
+		for (int i = 0 ; i <= length ; i++) {
+			rev_suffix_array[suffix_array[i]] = i;
+		}
+	}
+
+	void extend_left() {
+		int iter = 0;
+		while (left_length >= min_length) {
+			left_length = std::min(left_length, longest_common_prefix[left_index]);
+			int pos = suffix_array[--left_index];
+			if (pos < current_pos && pos >= min_pos) break;
+			if (++iter > match_patience) left_length = 0;
+		}
+	}
+
+	void extend_right() {
+		int iter = 0;
+		while (right_length >= min_length) {
+			right_length = std::min(right_length, longest_common_prefix[++right_index]);
+			int pos = suffix_array[right_index];
+			if (pos < current_pos && pos >= min_pos) break;
+			if (++iter > match_patience) right_length = 0;
+		}
+	}
+
+	int next_length() {
+		return std::max(left_length, right_length);
+	}
+
 public:
-	MatchFinder(unsigned char *data, int length, int max_same_length, int max_consecutive) :
-		data(data), length(length), max_same_length(max_same_length), max_consecutive(max_consecutive) {
+	MatchFinder(unsigned char *data, int length, int min_length, int match_patience, int max_same_length) :
+		data(data), length(length), min_length(min_length), match_patience(match_patience), max_same_length(max_same_length) {
+		make_suffix_array();
 		reset();
 	}
 
 	void reset() {
-		last_match.clear();
-		last_match.resize(256 * 256, END_OF_CHAIN);
-		same_match.clear();
-		same_match.resize(length, END_OF_CHAIN);
-		current_pos = 0;
-		consecutive = 0;
-		same_length = 0;
 	}
 
 	// Start finding matches between strings starting at pos and earlier strings.
 	void beginMatching(int pos) {
-		assert(pos >= current_pos);
-		while(current_pos < pos) {
-			unsigned short hash = (data[current_pos]<<8) | data[current_pos+1];
-			same_match[current_pos] = last_match[hash];
-			if (same_match[current_pos] == current_pos - 1) {
-				if (++consecutive >= max_consecutive) {
-					same_match[current_pos - max_consecutive + 1] = same_match[current_pos - max_consecutive];
-				}
-			} else {
-				consecutive = 0;
-			}
-			last_match[hash] = current_pos;
-			current_pos++;
-		}
-		unsigned short hash = (data[pos]<<8) | data[pos+1];
-		match_pos = last_match[hash];
-		longest_match = 0;
+		current_pos = pos;
+		min_pos = 0;
+
+		left_index = rev_suffix_array[pos];
+		left_length = length;
+		extend_left();
+		right_index = rev_suffix_array[pos];
+		right_length = length;
+		extend_right();
 	}
 
 	// Report next match. Returns whether a match was found.
 	bool nextMatch(int *match_pos_out, int *match_length_out) {
-		for (; match_pos != END_OF_CHAIN ; match_pos = same_match[match_pos]) {
-			int max_length = length - match_pos;
-			int match_length = 2;
-			while (match_length < max_length && data[match_pos + match_length] == data[current_pos + match_length]) match_length++;
-			if (match_length >= longest_match) {
-				if (match_length == longest_match) {
-					if (++same_length >= max_same_length) continue;
+		if (match_buffer.empty()) {
+			// Fill match buffer
+			current_length = next_length();
+			if (current_length < min_length) return false;
+			int new_min_pos = min_pos;
+			do {
+				int match_pos;
+				if (left_length > right_length) {
+					match_pos = suffix_array[left_index];
+					extend_left();
 				} else {
-					same_length = 0;
+					match_pos = suffix_array[right_index];
+					extend_right();
 				}
-				longest_match = match_length;
-				*match_pos_out = match_pos;
-				*match_length_out = match_length;
-				match_pos = same_match[match_pos];
-				return true;
-			}
+				new_min_pos = std::max(new_min_pos, match_pos);
+				if (match_buffer.size() < max_same_length) {
+					match_buffer.push(match_pos);
+				} else {
+					if (match_pos > match_buffer.top()) {
+						match_buffer.pop();
+						match_buffer.push(match_pos);
+					}
+				}
+			} while (next_length() == current_length);
+			assert(!match_buffer.empty());
+			min_pos = new_min_pos;
 		}
-		return false;
+
+		*match_length_out = current_length;
+		*match_pos_out = match_buffer.top();
+		match_buffer.pop();
+		assert(*match_pos_out < current_pos);
+		return true;
 	}
 };

@@ -31,7 +31,7 @@ void usage() {
 	printf(" -i, --iterations     Number of iterations for the compression (2)\n");
 	printf(" -l, --length-margin  Number of shorter matches considered for each match (0)\n");
 	printf(" -s, --skip-length    Minimum match length to accept greedily (200)\n");
-	printf(" -c, --consecutive    Number of matches to consider in same-valued spans (20)\n");
+	printf(" -e, --effort         Perseverance in finding multiple matches (100)\n");
 	printf(" -a, --same-length    Number of matches of the same length to consider (20)\n");
 	printf(" -r, --references     Number of reference edges to keep in memory (100000)\n");
 	printf(" -t, --text           Print a text, followed by a newline, before decrunching\n");
@@ -169,7 +169,7 @@ int main2(int argc, const char *argv[]) {
 	IntParameter    iterations    ("-i", "--iterations",      1,        9,      2, argc, argv, consumed);
 	IntParameter    length_margin ("-l", "--length-margin",   0,      100,      0, argc, argv, consumed);
 	IntParameter    skip_length   ("-s", "--skip-length",     2,   100000,    200, argc, argv, consumed);
-	IntParameter    consecutive   ("-c", "--consecutive",     1,   100000,     20, argc, argv, consumed);
+	IntParameter    effort        ("-e", "--effort",          0,   100000,    100, argc, argv, consumed);
 	IntParameter    same_length   ("-a", "--same-length",     1,   100000,     20, argc, argv, consumed);
 	IntParameter    references    ("-r", "--references",  10000, 10000000, 100000, argc, argv, consumed);
 	StringParameter text          ("-t", "--text",                                 argc, argv, consumed);
@@ -224,8 +224,8 @@ int main2(int argc, const char *argv[]) {
 	params.iterations = iterations.value;
 	params.length_margin = length_margin.value;
 	params.skip_length = skip_length.value;
+	params.match_patience = effort.value;
 	params.max_same_length = same_length.value;
-	params.max_consecutive = consecutive.value;
 	params.max_edges = references.value;
 
 	string *decrunch_text_ptr = NULL;
