@@ -23,6 +23,7 @@ are reported. The matches reported will be the closest ones of that length.
 #include <vector>
 #include <algorithm>
 #include <queue>
+#include <functional>
 
 using std::vector;
 
