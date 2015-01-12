@@ -21,7 +21,6 @@ struct PackParams {
 	int skip_length;
 	int match_patience;
 	int max_same_length;
-	int max_edges;
 };
 
 class PackProgress : public LZProgress {
@@ -76,9 +75,9 @@ public:
 	}
 };
 
-void packData(unsigned char *data, int data_length, int zero_padding, PackParams *params, Coder *result_coder, bool show_progress) {
+void packData(unsigned char *data, int data_length, int zero_padding, PackParams *params, Coder *result_coder, RefEdgeFactory *edge_factory, bool show_progress) {
 	MatchFinder finder(data, data_length, 2, params->match_patience, params->max_same_length);
-	LZParser parser(data, data_length, zero_padding, finder, params->length_margin, params->skip_length, params->max_edges);
+	LZParser parser(data, data_length, zero_padding, finder, params->length_margin, params->skip_length, edge_factory);
 	int real_size = 0;
 	int best_size = 999999999;
 	int best_result = 0;

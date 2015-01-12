@@ -226,7 +226,6 @@ int main2(int argc, const char *argv[]) {
 	params.skip_length = skip_length.value;
 	params.match_patience = effort.value;
 	params.max_same_length = same_length.value;
-	params.max_edges = references.value;
 
 	string *decrunch_text_ptr = NULL;
 	string decrunch_text;
@@ -275,10 +274,11 @@ int main2(int argc, const char *argv[]) {
 	}
 	int orig_mem = orig->memory_usage(true);
 	printf("Crunching...\n\n");
-	HunkFile *crunched = orig->crunch(&params, overlap.seen, mini.seen, decrunch_text_ptr, flash.value, !no_progress.seen);
+	RefEdgeFactory edge_factory(references.value);
+	HunkFile *crunched = orig->crunch(&params, overlap.seen, mini.seen, decrunch_text_ptr, flash.value, &edge_factory, !no_progress.seen);
 	delete orig;
-	printf("References considered:%8d\n",   RefEdge::max_edge_count);
-	printf("References discarded: %8d\n\n", RefEdge::edges_cleaned);
+	printf("References considered:%8d\n",   edge_factory.max_edge_count);
+	printf("References discarded: %8d\n\n", edge_factory.max_cleaned_edges);
 	if (!crunched->analyze()) {
 		printf("\nError while analyzing crunched file!\n\n");
 		delete crunched;

@@ -146,7 +146,7 @@ class HunkFile {
 	vector<Longword> data;
 	vector<HunkInfo> hunks;
 
-	vector<unsigned> compress_hunks(PackParams *params, bool overlap, bool mini, bool show_progress) {
+	vector<unsigned> compress_hunks(PackParams *params, bool overlap, bool mini, RefEdgeFactory *edge_factory, bool show_progress) {
 		int numhunks = hunks.size();
 
 		vector<unsigned> pack_buffer;
@@ -179,12 +179,12 @@ class HunkFile {
 						hunk_data_length--;
 					}
 					int zero_padding = mini ? 0 : hunks[h].memsize * 4 - hunk_data_length;
-					packData(hunk_data, hunk_data_length, zero_padding, params, range_coder, show_progress);
+					packData(hunk_data, hunk_data_length, zero_padding, params, range_coder, edge_factory, show_progress);
 				}
 				break;
 			default:
 				int zero_padding = mini ? 0 : hunks[h].memsize * 4;
-				packData(NULL, 0, zero_padding, params, range_coder, show_progress);
+				packData(NULL, 0, zero_padding, params, range_coder, edge_factory, show_progress);
 				break;
 			}
 
@@ -705,8 +705,8 @@ public:
 		return true;
 	}
 
-	HunkFile* crunch(PackParams *params, bool overlap, bool mini, string *decrunch_text, unsigned flash_address, bool show_progress) {
-		vector<unsigned> pack_buffer = compress_hunks(params, overlap, mini, show_progress);
+	HunkFile* crunch(PackParams *params, bool overlap, bool mini, string *decrunch_text, unsigned flash_address, RefEdgeFactory *edge_factory, bool show_progress) {
+		vector<unsigned> pack_buffer = compress_hunks(params, overlap, mini, edge_factory, show_progress);
 		vector<pair<int,int> > count_and_hunksize = verify(pack_buffer, overlap, mini);
 
 		int numhunks = hunks.size();
