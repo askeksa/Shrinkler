@@ -100,30 +100,26 @@ class MatchFinder {
 		}
 		std::sort(&suffix_array[0], &suffix_array[length], suffix_compare(this));
 
+		// Compute reverse suffix array
+		for (int i = 0 ; i <= length ; i++) {
+			rev_suffix_array[suffix_array[i]] = i;
+		}
+
 		// Compute LCP array
 		longest_common_prefix.resize(length + 1);
 		longest_common_prefix[0] = 0;
 		longest_common_prefix[length] = 0;
-		for (int i = 1 ; i < length ; i++) {
-			int a = suffix_array[i - 1];
-			int b = suffix_array[i];
-			int lcp = 0;
-			if (data[a] == data[b]) {
-				lcp = std::min(rev_suffix_array[a], rev_suffix_array[b]);
-				a += lcp;
-				b += lcp;
-				int until_end = length - std::max(a,b);
-				for (int i = 0 ; i < until_end ; i++) {
-					if (data[a + i] != data[b + i]) break;
-					lcp++;
+		int h = 0;
+		for (int i = 0 ; i < length ; i++) {
+			int r = rev_suffix_array[i];
+			if (r > 0) {
+				int j = suffix_array[r - 1];
+				while (data[i + h] == data[j + h]) {
+					h = h + 1;
 				}
+				longest_common_prefix[r] = h;
+				if (h > 0) h = h - 1;
 			}
-			longest_common_prefix[i] = lcp;
-		}
-
-		// Compute reverse suffix array
-		for (int i = 0 ; i <= length ; i++) {
-			rev_suffix_array[suffix_array[i]] = i;
 		}
 	}
 
