@@ -69,17 +69,13 @@ class RefEdge {
 		if (source != NULL) {
 			source->refcount++;
 		}
-		max_edge_count = max(max_edge_count, ++edge_count);
-	}
-
-	~RefEdge() {
-		edge_count--;
 	}
 
 	int target() {
 		return pos + length;
 	}
 
+	friend class RefEdgeFactory;
 	friend class LZParser;
 	friend class LZResultEdge;
 	friend class LZParseResult;
@@ -87,14 +83,7 @@ class RefEdge {
 
 public:
 	int _heap_index;
-	static int edge_count;
-	static int max_edge_count;
-	static int edges_cleaned;
 };
-
-int RefEdge::edge_count = 0;
-int RefEdge::max_edge_count = 0;
-int RefEdge::edges_cleaned = 0;
 
 namespace std {
 	template <> struct less<RefEdge*> {
@@ -103,6 +92,62 @@ namespace std {
 		}
 	};
 }
+
+// Factory for RefEdge objects which recycles destroyed objects for efficiency
+class RefEdgeFactory {
+	int edge_capacity;
+	int edge_count;
+	int cleaned_edges;
+
+	RefEdge* buffer;
+public:
+	int max_edge_count;
+	int max_cleaned_edges;
+
+	RefEdgeFactory(int edge_capacity) : edge_capacity(edge_capacity),
+		edge_count(0), cleaned_edges(0), max_edge_count(0), max_cleaned_edges(0)
+	{
+		buffer = NULL;
+	}
+
+	~RefEdgeFactory() {
+		while (buffer != NULL) {
+			RefEdge *edge = buffer;
+			buffer = buffer->source;
+			delete edge;
+		}
+	}
+
+	void reset() {
+		assert(edge_count == 0);
+		cleaned_edges = 0;
+	}
+
+	RefEdge* create(int pos, int offset, int length, int total_size, RefEdge *source) {
+		max_edge_count = max(max_edge_count, ++edge_count);
+		if (buffer == NULL) {
+			return new RefEdge(pos, offset, length, total_size, source);
+		} else {
+			RefEdge* edge = buffer;
+			buffer = edge->source;
+			return new (edge) RefEdge(pos, offset, length, total_size, source);
+		}
+	}
+
+	void destroy(RefEdge* edge, bool clean) {
+		edge->source = buffer;
+		buffer = edge;
+		edge_count--;
+		if (clean) {
+			max_cleaned_edges = max(max_cleaned_edges, ++cleaned_edges);
+		}
+	}
+
+	bool full() {
+		return edge_count >= edge_capacity;
+	}
+
+};
 
 class LZProgress {
 public:
@@ -167,8 +212,8 @@ class LZParser {
 	MatchFinder& finder;
 	int length_margin;
 	int skip_length;
-	int max_edges;
 	const LZEncoder* encoderp;
+	RefEdgeFactory* edge_factory;
 
 	vector<int> literal_size;
 	vector<map<int, RefEdge*> > edges_to_pos;
@@ -184,12 +229,12 @@ class LZParser {
 		root_edges.remove(edge);
 	}
 
-	void releaseEdge(RefEdge *edge) {
+	void releaseEdge(RefEdge *edge, bool clean = false) {
 		while (edge != NULL) {
 			RefEdge *source = edge->source;
 			if (--edge->refcount == 0) {
 				assert(!is_root(edge));
-				delete edge;
+				edge_factory->destroy(edge, clean);
 			} else {
 				return;
 			}
@@ -202,16 +247,13 @@ class LZParser {
 		if (root_edges.size() == 0) return false;
 		RefEdge *worst_edge = root_edges.remove_largest();
 		if (worst_edge == best || worst_edge == exclude) return true;
-		int count_before = RefEdge::edge_count;
 		map<int, RefEdge*>& container = worst_edge->target() > pos
 			? edges_to_pos[worst_edge->target()]
 			: best_for_offset;
 		if (container.size() > 1 && container.count(worst_edge->offset) > 0) {
 			container.erase(worst_edge->offset);
-			releaseEdge(worst_edge);
+			releaseEdge(worst_edge, true);
 		}
-		int count_after = RefEdge::edge_count;
-		RefEdge::edges_cleaned += count_before - count_after;
 		return true;
 	}
 
@@ -241,16 +283,16 @@ class LZParser {
 		int size_before = (source ? source->total_size : literal_size[data_length]) - (literal_size[data_length] - literal_size[pos]);
 		int edge_size = encoderp->encodeReference(offset, length, &state_before, &state_after);
 		int size_after = literal_size[data_length] - literal_size[new_target];
-		while (RefEdge::edge_count >= max_edges) {
+		while (edge_factory->full()) {
 			if (!clean_worst_edge(pos, source)) break;
 		}
-		RefEdge *new_edge = new RefEdge(pos, offset, length, size_before + edge_size + size_after, source);
+		RefEdge *new_edge = edge_factory->create(pos, offset, length, size_before + edge_size + size_after, source);
 		put_by_offset(edges_to_pos[new_target], new_edge);
 	}
 
 public:
-	LZParser(const unsigned char *data, int data_length, int zero_padding, MatchFinder& finder, int length_margin, int skip_length, int max_edges)
-		: data(data), data_length(data_length), zero_padding(zero_padding), finder(finder), length_margin(length_margin), skip_length(skip_length), max_edges(max_edges)
+	LZParser(const unsigned char *data, int data_length, int zero_padding, MatchFinder& finder, int length_margin, int skip_length, RefEdgeFactory* edge_factory)
+		: data(data), data_length(data_length), zero_padding(zero_padding), finder(finder), length_margin(length_margin), skip_length(skip_length), edge_factory(edge_factory)
 	{
 		// Initialize edges_to_pos array
 		edges_to_pos.resize(data_length + 1);
@@ -264,8 +306,7 @@ public:
 		// Reset state
 		best_for_offset.clear();
 		root_edges.clear();
-		int prev_edges_cleaned = RefEdge::edges_cleaned;
-		RefEdge::edges_cleaned = 0;
+		edge_factory->reset();
 
 		// Accumulate literal sizes
 		literal_size.resize(data_length + 1, 0);
@@ -279,7 +320,7 @@ public:
 		literal_size[data_length] = size;
 
 		// Parse
-		RefEdge* initial_best = new RefEdge(0, 0, 0, literal_size[data_length], NULL);
+		RefEdge* initial_best = edge_factory->create(0, 0, 0, literal_size[data_length], NULL);
 		best = initial_best;
 		for (int pos = 1 ; pos <= data_length ; pos++) {
 			// Assimilate edges ending here
@@ -357,11 +398,8 @@ public:
 		}
 		releaseEdge(edge);
 		releaseEdge(best);
-		assert(RefEdge::edge_count == 0);
 
 		progress->end();
-
-		RefEdge::edges_cleaned = max(RefEdge::edges_cleaned, prev_edges_cleaned);
 
 		return result;
 	}
