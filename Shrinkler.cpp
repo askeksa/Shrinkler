@@ -237,6 +237,7 @@ int main2(int argc, const char *argv[]) {
 		FILE *decrunch_text_file = fopen(textfile.value, "r");
 		if (!decrunch_text_file) {
 			printf("Error: Could not open text file %s\n", textfile.value);
+			exit(1);
 		}
 		char c;
 		while ((c = fgetc(decrunch_text_file)) != EOF) {
@@ -261,7 +262,7 @@ int main2(int argc, const char *argv[]) {
 		if (!merged->analyze()) {
 			printf("\nError while analyzing merged file!\n\n");
 			delete merged;
-			exit(1);
+			internal_error();
 		}
 		orig = merged;
 	}
@@ -282,6 +283,7 @@ int main2(int argc, const char *argv[]) {
 	if (!crunched->analyze()) {
 		printf("\nError while analyzing crunched file!\n\n");
 		delete crunched;
+		internal_error();
 	}
 	int crunched_mem_during = crunched->memory_usage(true);
 	int crunched_mem_after = crunched->memory_usage(mini.seen || overlap.seen);
