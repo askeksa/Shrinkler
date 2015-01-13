@@ -48,6 +48,7 @@ using std::vector;
 #include "LZEncoder.h"
 #include "MatchFinder.h"
 #include "Heap.h"
+#include "CuckooHash.h"
 #include "assert.h"
 
 // For each offset:
@@ -216,9 +217,9 @@ class LZParser {
 	RefEdgeFactory* edge_factory;
 
 	vector<int> literal_size;
-	vector<map<int, RefEdge*> > edges_to_pos;
+	vector<CuckooHash<RefEdge*> > edges_to_pos;
 	RefEdge* best;
-	map<int, RefEdge*> best_for_offset;
+	CuckooHash<RefEdge*> best_for_offset;
 	Heap<RefEdge*> root_edges;
 
 	bool is_root(RefEdge *edge) {
@@ -247,7 +248,7 @@ class LZParser {
 		if (root_edges.size() == 0) return false;
 		RefEdge *worst_edge = root_edges.remove_largest();
 		if (worst_edge == best || worst_edge == exclude) return true;
-		map<int, RefEdge*>& container = worst_edge->target() > pos
+		CuckooHash<RefEdge*>& container = worst_edge->target() > pos
 			? edges_to_pos[worst_edge->target()]
 			: best_for_offset;
 		if (container.size() > 1 && container.count(worst_edge->offset) > 0) {
@@ -257,7 +258,7 @@ class LZParser {
 		return true;
 	}
 
-	void put_by_offset(map<int, RefEdge*>& by_offset, RefEdge* edge) {
+	void put_by_offset(CuckooHash<RefEdge*>& by_offset, RefEdge* edge) {
 		assert(!is_root(edge));
 		if (by_offset.count(edge->offset) == 0) {
 			by_offset[edge->offset] = edge;
@@ -324,7 +325,7 @@ public:
 		best = initial_best;
 		for (int pos = 1 ; pos <= data_length ; pos++) {
 			// Assimilate edges ending here
-			for (map<int, RefEdge*>::iterator it = edges_to_pos[pos].begin() ; it != edges_to_pos[pos].end() ; it++) {
+			for (CuckooHash<RefEdge*>::iterator it = edges_to_pos[pos].begin() ; it != edges_to_pos[pos].end() ; it++) {
 				RefEdge *edge = it->second;
 				if (edge->total_size < best->total_size) {
 					best = edge;
@@ -359,14 +360,14 @@ public:
 			// If we have a very long match, skip ahead
 			if (max_match_length >= skip_length && !edges_to_pos[pos + max_match_length].empty()) {
 				root_edges.clear();
-				for (map<int, RefEdge*>::iterator it = best_for_offset.begin() ; it != best_for_offset.end() ; it++) {
+				for (CuckooHash<RefEdge*>::iterator it = best_for_offset.begin() ; it != best_for_offset.end() ; it++) {
 					releaseEdge(it->second);
 				}
 				best_for_offset.clear();
 				int target_pos = pos + max_match_length;
 				while (pos < target_pos - 1) {
-					map<int, RefEdge*>& edges = edges_to_pos[++pos];
-					for (map<int, RefEdge*>::iterator it = edges.begin() ; it != edges.end() ; it++) {
+					CuckooHash<RefEdge*>& edges = edges_to_pos[++pos];
+					for (CuckooHash<RefEdge*>::iterator it = edges.begin() ; it != edges.end() ; it++) {
 						releaseEdge(it->second);
 					}
 					edges.clear();
@@ -379,7 +380,7 @@ public:
 
 		// Clean unused paths
 		root_edges.clear();
-		for (map<int, RefEdge*>::iterator it = best_for_offset.begin() ; it != best_for_offset.end() ; it++) {
+		for (CuckooHash<RefEdge*>::iterator it = best_for_offset.begin() ; it != best_for_offset.end() ; it++) {
 			RefEdge *edge = it->second;
 			if (edge != best) {
 				releaseEdge(edge);
