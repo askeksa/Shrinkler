@@ -49,9 +49,9 @@ class MatchFinder {
 	int left_length;
 	int right_index;
 	int right_length;
-
-	// Filter state
 	int current_length;
+
+	// Best matches seen with current length
 	std::priority_queue<int, vector<int>, std::greater<int> > match_buffer;
 
 	struct suffix_compare {
@@ -59,11 +59,13 @@ class MatchFinder {
 
 		suffix_compare(MatchFinder* finder) : finder(finder) {}
 
+		// Compare suffixes starting at positions a and b
 		bool operator()(int a, int b) {
 			vector<int>& same = finder->rev_suffix_array;
 			unsigned char *data = finder->data;
 			if (a == b) return false;
 			if (data[a] == data[b]) {
+				// Skip stretch of equal bytes
 				int skip = std::min(same[a], same[b]);
 				a += skip;
 				b += skip;
@@ -75,7 +77,6 @@ class MatchFinder {
 				}
 			}
 			return a < b;
-
 		}
 	};
 
@@ -194,6 +195,7 @@ public:
 						match_buffer.pop();
 						match_buffer.push(match_pos);
 					}
+					min_pos = match_buffer.top();
 				}
 			} while (next_length() == current_length);
 			assert(!match_buffer.empty());
