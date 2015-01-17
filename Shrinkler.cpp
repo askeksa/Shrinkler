@@ -29,10 +29,10 @@ void usage() {
 	printf(" -o, --overlap        Overlap compressed and decompressed data to save memory\n");
 	printf(" -m, --mini           Use a smaller, but more restricted decrunch header\n");
 	printf(" -i, --iterations     Number of iterations for the compression (2)\n");
-	printf(" -l, --length-margin  Number of shorter matches considered for each match (0)\n");
-	printf(" -s, --skip-length    Minimum match length to accept greedily (200)\n");
-	printf(" -e, --effort         Perseverance in finding multiple matches (100)\n");
+	printf(" -l, --length-margin  Number of shorter matches considered for each match (2)\n");
 	printf(" -a, --same-length    Number of matches of the same length to consider (20)\n");
+	printf(" -e, --effort         Perseverance in finding multiple matches (200)\n");
+	printf(" -s, --skip-length    Minimum match length to accept greedily (2000)\n");
 	printf(" -r, --references     Number of reference edges to keep in memory (100000)\n");
 	printf(" -t, --text           Print a text, followed by a newline, before decrunching\n");
 	printf(" -T, --textfile       Print the contents of the given file before decrunching\n");
@@ -58,7 +58,7 @@ protected:
 				}
 				consumed[i] = true;
 				if (arg_kind) {
-					if (i+1 < argc) {
+					if (i+1 < argc && !consumed[i+1] && argv[i+1][0] != '-') {
 						seen = parseArg(argv[i], argv[i+1]);
 					}
 					if (!seen) {
@@ -167,11 +167,11 @@ int main2(int argc, const char *argv[]) {
 	FlagParameter   overlap       ("-o", "--overlap",                              argc, argv, consumed);
 	FlagParameter   mini          ("-m", "--mini",                                 argc, argv, consumed);
 	IntParameter    iterations    ("-i", "--iterations",      1,        9,      2, argc, argv, consumed);
-	IntParameter    length_margin ("-l", "--length-margin",   0,      100,      0, argc, argv, consumed);
-	IntParameter    skip_length   ("-s", "--skip-length",     2,   100000,    200, argc, argv, consumed);
-	IntParameter    effort        ("-e", "--effort",          0,   100000,    100, argc, argv, consumed);
+	IntParameter    length_margin ("-l", "--length-margin",   0,      100,      2, argc, argv, consumed);
 	IntParameter    same_length   ("-a", "--same-length",     1,   100000,     20, argc, argv, consumed);
-	IntParameter    references    ("-r", "--references",  10000, 10000000, 100000, argc, argv, consumed);
+	IntParameter    effort        ("-e", "--effort",          0,   100000,    200, argc, argv, consumed);
+	IntParameter    skip_length   ("-s", "--skip-length",     2,   100000,   2000, argc, argv, consumed);
+	IntParameter    references    ("-r", "--references",   1000, 10000000, 100000, argc, argv, consumed);
 	StringParameter text          ("-t", "--text",                                 argc, argv, consumed);
 	StringParameter textfile      ("-T", "--textfile",                             argc, argv, consumed);
 	HexParameter    flash         ("-f", "--flash",                             0, argc, argv, consumed);
@@ -278,8 +278,8 @@ int main2(int argc, const char *argv[]) {
 	RefEdgeFactory edge_factory(references.value);
 	HunkFile *crunched = orig->crunch(&params, overlap.seen, mini.seen, decrunch_text_ptr, flash.value, &edge_factory, !no_progress.seen);
 	delete orig;
-	printf("References considered:%8d\n",   edge_factory.max_edge_count);
-	printf("References discarded: %8d\n\n", edge_factory.max_cleaned_edges);
+	printf("References considered:%8d\n",  edge_factory.max_edge_count);
+	printf("References discarded:%9d\n\n", edge_factory.max_cleaned_edges);
 	if (!crunched->analyze()) {
 		printf("\nError while analyzing crunched file!\n\n");
 		delete crunched;
@@ -299,6 +299,10 @@ int main2(int argc, const char *argv[]) {
 
 	printf("Final file size: %d\n\n", crunched->size());
 	delete crunched;
+
+	if (edge_factory.max_edge_count > references.value) {
+		printf("Note: size may improve considerably with a higher reference limit (-r option).\n\n");
+	}
 
 	return 0;
 }
