@@ -1,3 +1,11 @@
+// Copyright 1999-2015 Aske Simon Christensen. See LICENSE.txt for usage terms.
+
+/*
+
+Cuckoo hash map. Used for mapping offsets to edges in the LZ parser.
+
+*/
+
 #pragma once
 
 #include <utility>
@@ -125,7 +133,7 @@ public:
 	}
 
 	CuckooHash(const CuckooHash& source) {
-		// TODO: Copy?
+		// We only use copy for array initialization, so just create an empty map
 		init();
 	}
 
