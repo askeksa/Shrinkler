@@ -276,7 +276,7 @@ int main2(int argc, const char *argv[]) {
 		delete crunched;
 
 		if (edge_factory.max_edge_count > references.value) {
-			printf("Note: size may improve considerably with a higher reference limit (-r option).\n\n");
+			printf("Note: compression may benefit from a larger reference buffer (-r option).\n\n");
 		}
 
 		return 0;
@@ -337,7 +337,7 @@ int main2(int argc, const char *argv[]) {
 	delete crunched;
 
 	if (edge_factory.max_edge_count > references.value) {
-		printf("Note: size may improve considerably with a higher reference limit (-r option).\n\n");
+		printf("Note: compression may benefit from a larger reference buffer (-r option).\n\n");
 	}
 
 	return 0;
