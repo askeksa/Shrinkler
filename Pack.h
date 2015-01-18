@@ -49,7 +49,7 @@ public:
 		if (pos < next_step_threshold) return;
 		while (pos >= next_step_threshold) {
 			steps += 1;
-			next_step_threshold = size * (steps + 1) / 1000;
+			next_step_threshold = (long long) size * (steps + 1) / 1000;
 		}
 		rewind();
 		print();
