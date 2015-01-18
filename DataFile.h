@@ -66,7 +66,7 @@ class DataFile {
 
 		// Check length
 		if (!error && verifier.size() != data.size()) {
-			printf("Verify error: data has incorrect length (%d, should have been %d)!\n", verifier.size(), data.size());
+			printf("Verify error: data has incorrect length (%d, should have been %d)!\n", verifier.size(), (int) data.size());
 			error = true;
 		}
 
