@@ -21,6 +21,10 @@ following conditions:
   from the decrunch headers) are to be considered original works of the
   author(s) of the corresponding input executables.
 
+- The data decompression code (ShrinklerDecompress.S) is distributed
+  alongside the Shrinkler binaries in the official archives and has its
+  own license stated inside the file.
+
 Exceptions:
 
 - doshunks.h is part of the Amiga SDK and is Copyright 1989-1993

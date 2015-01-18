@@ -20,11 +20,13 @@ Main file for the cruncher.
 using std::string;
 
 #include "HunkFile.h"
+#include "DataFile.h"
 
 void usage() {
 	printf("Usage: Shrinkler <options> <input executable> <output executable>\n");
 	printf("\n");
 	printf("Available options are (default values in parentheses):\n");
+	printf(" -d, --data           Treat input as raw data, rather than executable\n");
 	printf(" -h, --hunkmerge      Merge hunks of the same memory type\n");
 	printf(" -o, --overlap        Overlap compressed and decompressed data to save memory\n");
 	printf(" -m, --mini           Use a smaller, but more restricted decrunch header\n");
@@ -163,6 +165,7 @@ int main2(int argc, const char *argv[]) {
 
 	vector<bool> consumed(argc);
 
+	FlagParameter   data          ("-d", "--data",                                 argc, argv, consumed);
 	FlagParameter   hunkmerge     ("-h", "--hunkmerge",                            argc, argv, consumed);
 	FlagParameter   overlap       ("-o", "--overlap",                              argc, argv, consumed);
 	FlagParameter   mini          ("-m", "--mini",                                 argc, argv, consumed);
@@ -187,6 +190,12 @@ int main2(int argc, const char *argv[]) {
 			}
 			files.push_back(argv[i]);
 		}
+	}
+
+	if (data.seen && (hunkmerge.seen || overlap.seen || mini.seen || text.seen || textfile.seen || flash.seen)) {
+		printf("Error: The data option cannot be used together with any of the\n");
+		printf("hunkmerge, overlap, mini, text, textfile or flash options.\n\n");
+		usage();
 	}
 
 	if (overlap.seen && mini.seen) {
@@ -247,6 +256,33 @@ int main2(int argc, const char *argv[]) {
 		decrunch_text_ptr = &decrunch_text;
 	}
 
+	if (data.seen) {
+		// Data file compression
+		printf("Loading file %s...\n\n", infile);
+		DataFile *orig = new DataFile;
+		orig->load(infile);
+
+		printf("Crunching...\n\n");
+		RefEdgeFactory edge_factory(references.value);
+		DataFile *crunched = orig->crunch(&params, &edge_factory, !no_progress.seen);
+		delete orig;
+		printf("References considered:%8d\n",  edge_factory.max_edge_count);
+		printf("References discarded:%9d\n\n", edge_factory.max_cleaned_edges);
+
+		printf("Saving file %s...\n\n", outfile);
+		crunched->save(outfile);
+
+		printf("Final file size: %d\n\n", crunched->size());
+		delete crunched;
+
+		if (edge_factory.max_edge_count > references.value) {
+			printf("Note: size may improve considerably with a higher reference limit (-r option).\n\n");
+		}
+
+		return 0;
+	}
+
+	// Executable file compression
 	printf("Loading file %s...\n\n", infile);
 	HunkFile *orig = new HunkFile;
 	orig->load(infile);
