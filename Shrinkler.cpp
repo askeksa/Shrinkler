@@ -6,7 +6,7 @@ Main file for the cruncher.
 
 */
 
-//#define SHRINKLER_TITLE ("Shrinkler executable file compressor by Blueberry - version 4.3 (2015-01-05)\n\n")
+//#define SHRINKLER_TITLE ("Shrinkler executable file compressor by Blueberry - version 4.4 (2015-01-18)\n\n")
 
 #ifndef SHRINKLER_TITLE
 #define SHRINKLER_TITLE ("Shrinkler executable file compressor by Blueberry - development version (built " __DATE__ " " __TIME__ ")\n\n")

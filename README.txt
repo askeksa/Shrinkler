@@ -15,6 +15,16 @@ compression, at the cost of higher time and/or memory requirements.
 
 History:
 
+2015-01-18:  Version 4.4. Optimizations galore:
+             New match finder based on a suffix array.
+             New reference edge map based on a cuckoo hash table.
+             Pre-compute number encoding sizes for faster estimation.
+             Recycle references edges to save alloc/dealloc overhead.
+             Updated defaults to take advantage of speed increase.
+             Data file compression mode with decompression source.
+             Fixed broken progress output for big files.
+             Do not crash if text file could not be opened.
+
 2015-01-05:  Version 4.3. Minor fixes:
              Usage information adjusted to fit within 77 columns.
              References discarded metric computed properly.
