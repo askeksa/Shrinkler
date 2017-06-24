@@ -52,11 +52,15 @@ History:
 1999 - 2012: Various public and internal versions.
 
 
-Source code available from https://bitbucket.org/askeksa/shrinkler
+Source code available from https://github.com/askeksa/Shrinkler
 
 
 For questions and comments, visit the ADA forum at
 
 http://ada.untergrund.net/?p=boardthread&id=264
+
+or the Pouet forum at
+
+http://www.pouet.net/prod.php?which=64851
 
 or write to blueberry at loonies dot dk.
