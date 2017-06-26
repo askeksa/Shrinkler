@@ -40,6 +40,7 @@ void usage() {
 	printf(" -T, --textfile       Print the contents of the given file before decrunching\n");
 	printf(" -f, --flash          Poke into a register (e.g. DFF180) during decrunching\n");
 	printf(" -p, --no-progress    Do not print progress info: no ANSI codes in output\n");
+	printf(" -u, --only-hunkmerge Do not compress, only merge hunks of the same memory type\n");
 	printf("\n");
 	exit(0);
 }
@@ -165,20 +166,21 @@ int main2(int argc, const char *argv[]) {
 
 	vector<bool> consumed(argc);
 
-	FlagParameter   data          ("-d", "--data",                                 argc, argv, consumed);
-	FlagParameter   hunkmerge     ("-h", "--hunkmerge",                            argc, argv, consumed);
-	FlagParameter   overlap       ("-o", "--overlap",                              argc, argv, consumed);
-	FlagParameter   mini          ("-m", "--mini",                                 argc, argv, consumed);
-	IntParameter    iterations    ("-i", "--iterations",      1,        9,      2, argc, argv, consumed);
-	IntParameter    length_margin ("-l", "--length-margin",   0,      100,      2, argc, argv, consumed);
-	IntParameter    same_length   ("-a", "--same-length",     1,   100000,     20, argc, argv, consumed);
-	IntParameter    effort        ("-e", "--effort",          0,   100000,    200, argc, argv, consumed);
-	IntParameter    skip_length   ("-s", "--skip-length",     2,   100000,   2000, argc, argv, consumed);
-	IntParameter    references    ("-r", "--references",   1000, 10000000, 100000, argc, argv, consumed);
-	StringParameter text          ("-t", "--text",                                 argc, argv, consumed);
-	StringParameter textfile      ("-T", "--textfile",                             argc, argv, consumed);
-	HexParameter    flash         ("-f", "--flash",                             0, argc, argv, consumed);
-	FlagParameter   no_progress   ("-p", "--no-progress",                          argc, argv, consumed);
+	FlagParameter   data           ("-d", "--data",                                 argc, argv, consumed);
+	FlagParameter   hunkmerge      ("-h", "--hunkmerge",                            argc, argv, consumed);
+	FlagParameter   overlap        ("-o", "--overlap",                              argc, argv, consumed);
+	FlagParameter   mini           ("-m", "--mini",                                 argc, argv, consumed);
+	IntParameter    iterations     ("-i", "--iterations",      1,        9,      2, argc, argv, consumed);
+	IntParameter    length_margin  ("-l", "--length-margin",   0,      100,      2, argc, argv, consumed);
+	IntParameter    same_length    ("-a", "--same-length",     1,   100000,     20, argc, argv, consumed);
+	IntParameter    effort         ("-e", "--effort",          0,   100000,    200, argc, argv, consumed);
+	IntParameter    skip_length    ("-s", "--skip-length",     2,   100000,   2000, argc, argv, consumed);
+	IntParameter    references     ("-r", "--references",   1000, 10000000, 100000, argc, argv, consumed);
+	StringParameter text           ("-t", "--text",                                 argc, argv, consumed);
+	StringParameter textfile       ("-T", "--textfile",                             argc, argv, consumed);
+	HexParameter    flash          ("-f", "--flash",                             0, argc, argv, consumed);
+	FlagParameter   no_progress    ("-p", "--no-progress",                          argc, argv, consumed);
+	FlagParameter   only_hunkmerge ("-u", "--only-hunkmerge",                       argc, argv, consumed);
 
 	vector<const char*> files;
 
@@ -195,6 +197,11 @@ int main2(int argc, const char *argv[]) {
 	if (data.seen && (hunkmerge.seen || overlap.seen || mini.seen || text.seen || textfile.seen || flash.seen)) {
 		printf("Error: The data option cannot be used together with any of the\n");
 		printf("hunkmerge, overlap, mini, text, textfile or flash options.\n\n");
+		usage();
+	}
+
+	if (only_hunkmerge.seen && (data.seen || hunkmerge.seen || overlap.seen || mini.seen || iterations.seen || length_margin.seen || same_length.seen || effort.seen || skip_length.seen || references.seen || text.seen || textfile.seen || flash.seen || no_progress.seen)) {
+		printf("Error: The only-hunkmerge option cannot be used together with any other option\n\n");
 		usage();
 	}
 
@@ -291,7 +298,7 @@ int main2(int argc, const char *argv[]) {
 		delete orig;
 		exit(1);
 	}
-	if (hunkmerge.seen) {
+	if (hunkmerge.seen || only_hunkmerge.seen) {
 		printf("Merging hunks...\n\n");
 		HunkFile *merged = orig->merge_hunks(orig->merged_hunklist());
 		delete orig;
@@ -300,6 +307,19 @@ int main2(int argc, const char *argv[]) {
 			delete merged;
 			internal_error();
 		}
+
+		if (only_hunkmerge.seen) {
+			printf("Saving file %s...\n\n", outfile);
+			merged->save(outfile);
+			#ifdef S_IRWXU // Is the POSIX file permission API available?
+				chmod(outfile, 0755); // Mark file executable
+			#endif
+
+			printf("Final file size: %d\n\n", merged->size());
+
+			return 0;
+		}
+
 		orig = merged;
 	}
 	if (mini.seen && !orig->valid_mini()) {
