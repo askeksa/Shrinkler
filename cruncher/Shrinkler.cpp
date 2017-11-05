@@ -31,6 +31,7 @@ void usage() {
 	printf(" -u, --no-crunch      Process hunks without crunching\n");
 	printf(" -o, --overlap        Overlap compressed and decompressed data to save memory\n");
 	printf(" -m, --mini           Use a smaller, but more restricted decrunch header\n");
+	printf(" -1, ..., -9          Presets for all compression options (-2)\n");
 	printf(" -i, --iterations     Number of iterations for the compression (2)\n");
 	printf(" -l, --length-margin  Number of shorter matches considered for each match (2)\n");
 	printf(" -a, --same-length    Number of matches of the same length to consider (20)\n");
@@ -161,21 +162,53 @@ protected:
 	}
 };
 
+class DigitParameter : public Parameter {
+public:
+	int value;
+
+	DigitParameter(int default_value, int argc, const char *argv[], vector<bool>& consumed)
+	: value(default_value)
+	{
+		seen = false;
+		for (int i = 1 ; i < argc ; i++) {
+			const char *a = argv[i];
+			if (strlen(a) == 2 && a[0] == '-' && a[1] >= '0' && a[1] <= '9') {
+				if (seen) {
+					printf("Error: Numeric parameter specified multiple times.\n\n");
+					usage();
+				}
+				consumed[i] = true;
+				value = a[1] - '0';
+				seen = true;
+			}
+		}
+	}
+
+protected:
+	virtual bool parseArg(const char *param, const char *arg) {
+		// Not used
+		return true;
+	}
+};
+
 int main2(int argc, const char *argv[]) {
 	printf(SHRINKLER_TITLE);
 
 	vector<bool> consumed(argc);
+
+	DigitParameter  preset        (                                             2, argc, argv, consumed);
+	int p = preset.value;
 
 	FlagParameter   data          ("-d", "--data",                                 argc, argv, consumed);
 	FlagParameter   hunkmerge     ("-h", "--hunkmerge",                            argc, argv, consumed);
 	FlagParameter   no_crunch     ("-u", "--no-crunch",                            argc, argv, consumed);
 	FlagParameter   overlap       ("-o", "--overlap",                              argc, argv, consumed);
 	FlagParameter   mini          ("-m", "--mini",                                 argc, argv, consumed);
-	IntParameter    iterations    ("-i", "--iterations",      1,        9,      2, argc, argv, consumed);
-	IntParameter    length_margin ("-l", "--length-margin",   0,      100,      2, argc, argv, consumed);
-	IntParameter    same_length   ("-a", "--same-length",     1,   100000,     20, argc, argv, consumed);
-	IntParameter    effort        ("-e", "--effort",          0,   100000,    200, argc, argv, consumed);
-	IntParameter    skip_length   ("-s", "--skip-length",     2,   100000,   2000, argc, argv, consumed);
+	IntParameter    iterations    ("-i", "--iterations",      1,        9,    1*p, argc, argv, consumed);
+	IntParameter    length_margin ("-l", "--length-margin",   0,      100,    1*p, argc, argv, consumed);
+	IntParameter    same_length   ("-a", "--same-length",     1,   100000,   10*p, argc, argv, consumed);
+	IntParameter    effort        ("-e", "--effort",          0,   100000,  100*p, argc, argv, consumed);
+	IntParameter    skip_length   ("-s", "--skip-length",     2,   100000, 1000*p, argc, argv, consumed);
 	IntParameter    references    ("-r", "--references",   1000, 10000000, 100000, argc, argv, consumed);
 	StringParameter text          ("-t", "--text",                                 argc, argv, consumed);
 	StringParameter textfile      ("-T", "--textfile",                             argc, argv, consumed);
@@ -200,7 +233,7 @@ int main2(int argc, const char *argv[]) {
 		usage();
 	}
 
-	if (no_crunch.seen && (data.seen || overlap.seen || mini.seen || iterations.seen || length_margin.seen || same_length.seen || effort.seen || skip_length.seen || references.seen || text.seen || textfile.seen || flash.seen)) {
+	if (no_crunch.seen && (data.seen || overlap.seen || mini.seen || preset.seen || iterations.seen || length_margin.seen || same_length.seen || effort.seen || skip_length.seen || references.seen || text.seen || textfile.seen || flash.seen)) {
 		printf("Error: The no-crunch option cannot be used together with any of the\n");
 		printf("crunching options.\n\n");
 		usage();
