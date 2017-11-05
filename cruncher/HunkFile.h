@@ -716,10 +716,24 @@ public:
 	}
 
 	HunkFile* crunch(PackParams *params, bool overlap, bool mini, string *decrunch_text, unsigned flash_address, RefEdgeFactory *edge_factory, bool show_progress) {
+		int numhunks = hunks.size();
+
+		// Pad empty hunks
+		bool forced = false;
+		for (int h = 0 ; h < numhunks ; h++) {
+			if (hunks[h].memsize == 0) {
+				hunks[h].memsize = 1;
+				printf("Mem size of hunk %d forced to 4.\n", h);
+				forced = true;
+			}
+		}
+		if (forced) {
+			printf("\n");
+		}
+
 		vector<unsigned> pack_buffer = compress_hunks(params, overlap, mini, edge_factory, show_progress);
 		vector<pair<int,int> > count_and_hunksize = verify(pack_buffer, overlap, mini);
 
-		int numhunks = hunks.size();
 		int newnumhunks = numhunks+1;
 		int bufsize = data.size() * 11 / 10 + 1000;
 
