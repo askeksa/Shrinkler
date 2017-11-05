@@ -521,6 +521,16 @@ public:
 		return sum;
 	}
 
+	vector<pair<unsigned, vector<int> > > identity_hunklist() {
+		int numhunks = hunks.size();
+		vector<pair<unsigned, vector<int> > > hunklist;
+		for (int sh = 0 ; sh < numhunks ; sh++) {
+			hunklist.push_back(make_pair(hunks[sh].type | hunks[sh].flags, vector<int>()));
+			hunklist.back().second.push_back(sh);
+		}
+		return hunklist;
+	}
+
 	vector<pair<unsigned, vector<int> > > merged_hunklist() {
 		int numhunks = hunks.size();
 		vector<pair<unsigned, vector<int> > > hunklist(3);

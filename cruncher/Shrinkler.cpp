@@ -28,6 +28,7 @@ void usage() {
 	printf("Available options are (default values in parentheses):\n");
 	printf(" -d, --data           Treat input as raw data, rather than executable\n");
 	printf(" -h, --hunkmerge      Merge hunks of the same memory type\n");
+	printf(" -u, --no-crunch      Process hunks without crunching\n");
 	printf(" -o, --overlap        Overlap compressed and decompressed data to save memory\n");
 	printf(" -m, --mini           Use a smaller, but more restricted decrunch header\n");
 	printf(" -i, --iterations     Number of iterations for the compression (2)\n");
@@ -167,6 +168,7 @@ int main2(int argc, const char *argv[]) {
 
 	FlagParameter   data          ("-d", "--data",                                 argc, argv, consumed);
 	FlagParameter   hunkmerge     ("-h", "--hunkmerge",                            argc, argv, consumed);
+	FlagParameter   no_crunch     ("-u", "--no-crunch",                            argc, argv, consumed);
 	FlagParameter   overlap       ("-o", "--overlap",                              argc, argv, consumed);
 	FlagParameter   mini          ("-m", "--mini",                                 argc, argv, consumed);
 	IntParameter    iterations    ("-i", "--iterations",      1,        9,      2, argc, argv, consumed);
@@ -195,6 +197,12 @@ int main2(int argc, const char *argv[]) {
 	if (data.seen && (hunkmerge.seen || overlap.seen || mini.seen || text.seen || textfile.seen || flash.seen)) {
 		printf("Error: The data option cannot be used together with any of the\n");
 		printf("hunkmerge, overlap, mini, text, textfile or flash options.\n\n");
+		usage();
+	}
+
+	if (no_crunch.seen && (data.seen || overlap.seen || mini.seen || iterations.seen || length_margin.seen || same_length.seen || effort.seen || skip_length.seen || references.seen || text.seen || textfile.seen || flash.seen)) {
+		printf("Error: The no-crunch option cannot be used together with any of the\n");
+		printf("crunching options.\n\n");
 		usage();
 	}
 
@@ -291,6 +299,7 @@ int main2(int argc, const char *argv[]) {
 		delete orig;
 		exit(1);
 	}
+
 	if (hunkmerge.seen) {
 		printf("Merging hunks...\n\n");
 		HunkFile *merged = orig->merge_hunks(orig->merged_hunklist());
@@ -301,7 +310,29 @@ int main2(int argc, const char *argv[]) {
 			internal_error();
 		}
 		orig = merged;
+	} else if (no_crunch.seen) {
+		printf("Processing hunks...\n\n");
+		HunkFile *processed = orig->merge_hunks(orig->identity_hunklist());
+		delete orig;
+		if (!processed->analyze()) {
+			printf("\nError while analyzing processed file!\n\n");
+			delete processed;
+			internal_error();
+		}
+		orig = processed;
 	}
+	if (no_crunch.seen) {
+		printf("Saving file %s...\n\n", outfile);
+		orig->save(outfile);
+#ifdef S_IRWXU // Is the POSIX file permission API available?
+		chmod(outfile, 0755); // Mark file executable
+#endif
+		printf("Final file size: %d\n\n", orig->size());
+		delete orig;
+
+		return 0;
+	}
+
 	if (mini.seen && !orig->valid_mini()) {
 		printf("Input executable not suitable for mini crunching.\n"
 		       "Must contain only one non-empty hunk and no relocations,\n"
@@ -332,7 +363,6 @@ int main2(int argc, const char *argv[]) {
 #ifdef S_IRWXU // Is the POSIX file permission API available?
 	chmod(outfile, 0755); // Mark file executable
 #endif
-
 	printf("Final file size: %d\n\n", crunched->size());
 	delete crunched;
 
