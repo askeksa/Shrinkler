@@ -49,7 +49,7 @@ class DataFile {
 		return pack_buffer;		
 	}
 
-	void verify(vector<unsigned>& pack_buffer) {
+	int verify(vector<unsigned>& pack_buffer) {
 		printf("Verifying... ");
 		fflush(stdout);
 		RangeDecoder decoder(LZEncoder::NUM_CONTEXTS + NUM_RELOC_CONTEXTS, pack_buffer);
@@ -75,6 +75,8 @@ class DataFile {
 		}
 
 		printf("OK\n\n");
+
+		return verifier.front_overlap_margin + pack_buffer.size() * 4 - data.size();
 	}
 
 public:
@@ -114,7 +116,9 @@ public:
 
 	DataFile* crunch(PackParams *params, RefEdgeFactory *edge_factory, bool show_progress) {
 		vector<unsigned> pack_buffer = compress(params, edge_factory, show_progress);
-		verify(pack_buffer);
+		int margin = verify(pack_buffer);
+
+		printf("Minimum safety margin for overlapped decrunching: %d\n\n", margin);
 
 		DataFile *ef = new DataFile;
 		ef->data.resize(pack_buffer.size() * 4, 0);
