@@ -26,13 +26,14 @@ Output		=	-60
 
 	align	0,4
 Header1:
-	move.l	a3,a4
-	move.l	(a4)+,d2
+	lea.l	Header1(pc),a4
 	movem.l	d0/a0/a4,-(a7)
+	move.l	-(a4),d2
+	move.l	a4,a3
 .hunk:	lsl.l	#2,d2
 	move.l	a4,a5
 	move.l	d2,a4
-	move.l	(a4)+,d2
+	move.l	(a4),d2
 	bne.b	.hunk
 
 	move.l	$4.w,a6
@@ -42,13 +43,14 @@ Header1:
 Header1_End:
 
 Header1T:
-	move.l	a3,a4
-	move.l	(a4)+,d2
+	lea.l	Header1T(pc),a4
 	movem.l	d0/a0/a4,-(a7)
+	move.l	-(a4),d2
+	move.l	a4,a3
 .hunk:	lsl.l	#2,d2
 	move.l	a4,a5
 	move.l	d2,a4
-	move.l	(a4)+,d2
+	move.l	(a4),d2
 	bne.b	.hunk
 
 TextLengthInstr:
@@ -77,11 +79,10 @@ Header1T_End:
 
 Header2:
 	; Detach last hunk
-	clr.l	-(a5)
+	clr.l	(a5)
 
-	; Packed data Start
-ContextOffsetInstr:
-	lea.l	Header2_End(pc),a4
+	; Packed data End
+	add.l	-(a4),a4
 
 	; Init range decoder state
 	moveq.l	#1,d1
@@ -115,14 +116,8 @@ HunkLoop:
 .ref:
 	moveq.l	#-1,d6
 	bsr.b	GetBit
-	bcs.b	.sameoffset
-.newref:
-	moveq.l	#3,d6
-	bsr.b	GetNumber
-	moveq.l	#2,d5
-	sub.l	d7,d5
-	beq.b	.hunkend
-.sameoffset:
+	bcc.b	.readoffset
+.readlength:
 	moveq.l	#4,d6
 	bsr.b	GetNumber
 .copyloop:
@@ -132,8 +127,12 @@ HunkLoop:
 .afterref:
 	bsr.b	GetKind
 	bcc.b	.lit
-	bra.b	.newref
-.hunkend:
+.readoffset:
+	moveq.l	#3,d6
+	bsr.b	GetNumber
+	moveq.l	#2,d5
+	sub.l	d7,d5
+	bne.b	.readlength
 
 	; Relocs
 	move.l	a3,d5
@@ -210,7 +209,7 @@ GetNumber:
 readbit:
 	add.l	d1,d1
 	bne.b	nonewword
-	move.l	(a4)+,d1
+	move.l	-(a4),d1
 	addx.l	d1,d1
 nonewword:
 	addx.w	d2,d2
@@ -255,4 +254,3 @@ Header2_End:
 	printv	Header2_End-Header2
 	printt
 	printv	TextLengthInstr+2-Header1T
-	printv	ContextOffsetInstr+2-Header2

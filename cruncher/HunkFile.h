@@ -766,8 +766,8 @@ public:
 			if (decrunch_text) {
 				memcpy(&ef->data[dpos], OverlapHeaderT, sizeof(OverlapHeaderT));
 				dpos += sizeof(OverlapHeaderT) / sizeof(Longword);
-				ef->data[ppos + 4] = decrunch_text->length();
-				offsetp = (Word *) &ef->data[ppos + 10];
+				ef->data[ppos + 10] = decrunch_text->length(); // Immediate for length of text
+				offsetp = (Word *) &ef->data[ppos + 9]; // PC offset to text
 			} else {
 				memcpy(&ef->data[dpos], OverlapHeader, sizeof(OverlapHeader));
 				dpos += sizeof(OverlapHeader) / sizeof(Longword);
@@ -785,7 +785,7 @@ public:
 			ppos = dpos;
 			memcpy(&ef->data[dpos], MiniHeader, sizeof(MiniHeader));
 			dpos += sizeof(MiniHeader) / sizeof(Longword);
-			offsetp = (Word *) (((unsigned char *) &ef->data[ppos]) + 12);
+			offsetp = (Word *) (((unsigned char *) &ef->data[ppos]) + 14); // PC offset to end of data
 		} else {
 			int header1_size = sizeof(Header1) / sizeof(Longword);
 			if (decrunch_text) {
@@ -809,7 +809,7 @@ public:
 				memcpy(&ef->data[dpos], Header1T, sizeof(Header1T));
 				char *text_dest = ((char *) &ef->data[dpos]) + sizeof(Header1T);
 				memcpy(text_dest, decrunch_text->c_str(), decrunch_text->length());
-				ef->data[dpos + 5] = decrunch_text->length();
+				ef->data[dpos + 6] = decrunch_text->length(); // Immediate for length of text
 			} else {
 				memcpy(&ef->data[dpos], Header1, sizeof(Header1));
 			}
@@ -835,7 +835,6 @@ public:
 			ppos = dpos;
 			memcpy(&ef->data[dpos], Header2, sizeof(Header2));
 			dpos += sizeof(Header2) / sizeof(Longword);
-			offsetp = (Word *) (((unsigned char *) &ef->data[ppos]) + 4);
 		}
 
 		if (flash_address) {
@@ -844,7 +843,7 @@ public:
 			for (int fpos = dpos - 1 ; fpos >= dpos - 9 ; fpos--) {
 				ef->data[fpos] = ef->data[fpos - 1];
 			}
-			Word* insts = (Word *) &ef->data[dpos - 11];
+			Word* insts = (Word *) &ef->data[dpos - 11]; // TST instruction for interval size
 			insts[0] = 0x33C3; // move.w d3,flash_address
 			*(Longword *)&insts[1] = flash_address;
 			insts[3] = 0x6AEC; // bpl.b readbit
@@ -899,13 +898,13 @@ public:
 			}
 			*offsetp = offset;
 		} else {
-			// Write compressed data
-			for (int i = 0 ; i < pack_buffer.size() ; i++) {
+			// Write compressed data backwards
+			for (int i = pack_buffer.size()-1 ; i >= 0 ; i--) {
 				ef->data[dpos++] = pack_buffer[i];
 			}
 
 			// Set hunk sizes
-			ef->data[lpos1] = dpos-ppos + 1; // Space for range decoder overshoot
+			ef->data[lpos1] = dpos-ppos;
 			ef->data[lpos2] = dpos-ppos;
 		}
 

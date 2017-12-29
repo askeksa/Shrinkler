@@ -13,7 +13,7 @@ CacheClearU	=	-636
 	align	0,4
 
 MiniHeader:
-	move.l	(a3),d2
+	move.l	MiniHeader-4(pc),d2
 	lsl.l	#2,d2
 	move.l	d2,a1
 	addq.l	#4,a1
@@ -49,14 +49,8 @@ Depack:
 .ref:
 	moveq.l	#-1,d6
 	bsr.b	GetBit
-	bcs.b	.sameoffset
-.newref:
-	moveq.l	#3,d6
-	bsr.b	GetNumber
-	moveq.l	#2,d5
-	sub.l	d7,d5
-	beq.b	.end
-.sameoffset:
+	bcc.b	.readoffset
+.readlength:
 	moveq.l	#4,d6
 	bsr.b	GetNumber
 .copyloop:
@@ -66,9 +60,13 @@ Depack:
 .afterref:
 	bsr.b	GetKind
 	bcc.b	.lit
-	bra.b	.newref
+.readoffset:
+	moveq.l	#3,d6
+	bsr.b	GetNumber
+	moveq.l	#2,d5
+	sub.l	d7,d5
+	bne.b	.readlength
 
-.end:
 	move.l	$4.w,a6
 	cmp.w	#37,LIB_VERSION(a6)
 	blt.b	not204

@@ -23,15 +23,13 @@ Output		=	-60
 
 	align	0,4
 OverlapHeader:
-	move.l	(a3),d2
+	move.l	OverlapHeader-4(pc),d2
 	lsl.l	#2,d2
 	move.l	d2,a3
 	move.l	$4.w,a6
 
 	if	TEXT
 	movem.l	d0/a0,-(a7)
-TextLengthInstr:
-	move.l	#DUMMY_TEXT_LENGTH,d3
 	lea.l	DosName(pc),a1
 	jsr	OldOpenLibrary(a6)
 	move.l	d0,a6
@@ -40,6 +38,8 @@ TextLengthInstr:
 	beq.b	noout
 TextOffsetInstr:
 	lea.l	OverlapHeader_End(pc),a0
+TextLengthInstr:
+	move.l	#DUMMY_TEXT_LENGTH,d3
 	move.l	a0,d2
 	jsr	Write(a6)
 noout:	move.l	a6,a1
@@ -87,14 +87,8 @@ HunkLoop:
 .ref:
 	moveq.l	#-1,d6
 	bsr.b	GetBit
-	bcs.b	.sameoffset
-.newref:
-	moveq.l	#3,d6
-	bsr.b	GetNumber
-	moveq.l	#2,d5
-	sub.l	d7,d5
-	beq.b	.hunkend
-.sameoffset:
+	bcc.b	.readoffset
+.readlength:
 	moveq.l	#4,d6
 	bsr.b	GetNumber
 .copyloop:
@@ -104,8 +98,12 @@ HunkLoop:
 .afterref:
 	bsr.b	GetKind
 	bcc.b	.lit
-	bra.b	.newref
-.hunkend:
+.readoffset:
+	moveq.l	#3,d6
+	bsr.b	GetNumber
+	moveq.l	#2,d5
+	sub.l	d7,d5
+	bne.b	.readlength
 
 	; Relocs
 	move.l	a3,d5
