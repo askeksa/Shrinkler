@@ -78,7 +78,7 @@ class RefEdge {
 
 	friend class RefEdgeFactory;
 	friend class LZParser;
-	friend class LZResultEdge;
+	friend struct LZResultEdge;
 	friend class LZParseResult;
 	friend struct std::less<RefEdge*>;
 
