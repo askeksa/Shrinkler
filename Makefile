@@ -3,7 +3,7 @@ ifndef PLATFORM
 PLATFORM := native
 endif
 
-ifneq ($(PLATFORM),$(filter $(PLATFORM),amiga windows-32 windows-64 native native-32 native-64))
+ifneq ($(PLATFORM),$(filter $(PLATFORM),amiga windows-32 windows-64 native native-32 native-64 mac))
 DUMMY := $(error Unsupported platform $(PLATFORM))
 endif
 
@@ -15,13 +15,15 @@ all: $(BUILD_DIR)/Shrinkler
 
 # Common flags
 CFLAGS := -Wall -Wno-sign-compare
-LFLAGS := -s
+LFLAGS :=
 
 ifdef DEBUG
 CFLAGS += -g -DDEBUG
-LFLAGS :=
 else
 CFLAGS += -O3
+ifneq ($(PLATFORM),mac)
+LFLAGS += -s
+endif
 endif
 
 ifdef PROFILE
@@ -63,7 +65,7 @@ ifeq ($(PLATFORM),windows-32)
 
 CC       := i686-w64-mingw32-g++
 LINK     := i686-w64-mingw32-g++
-LFLAGS   += -static-libgcc -static-libstdc++
+LFLAGS   += -static -static-libgcc -static-libstdc++
 
 else
 ifeq ($(PLATFORM),windows-64)
@@ -72,7 +74,7 @@ ifeq ($(PLATFORM),windows-64)
 
 CC       := x86_64-w64-mingw32-g++
 LINK     := x86_64-w64-mingw32-g++
-LFLAGS   += -static-libgcc -static-libstdc++
+LFLAGS   += -static -static-libgcc -static-libstdc++
 
 else
 
@@ -83,10 +85,17 @@ LINK     := g++
 
 ifeq ($(PLATFORM),native-32)
 CFLAGS   += -m32
+LFLAGS   += -m32
 endif
 
 ifeq ($(PLATFORM),native-64)
 CFLAGS   += -m64
+LFLAGS   += -m64
+endif
+
+ifeq ($(PLATFORM),mac)
+CFLAGS   += -mmacosx-version-min=10.9
+LFLAGS   += -mmacosx-version-min=10.9
 endif
 
 endif
