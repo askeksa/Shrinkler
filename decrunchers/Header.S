@@ -1,4 +1,4 @@
-; Copyright 1999-2015 Aske Simon Christensen. See LICENSE.txt for usage terms.
+; Copyright 1999-2017 Aske Simon Christensen. See LICENSE.txt for usage terms.
 
 ;	auto	wb\Header1\Header1_End\
 ;	auto	wb\Header1T\Header1T_End\
