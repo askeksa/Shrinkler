@@ -15,6 +15,14 @@ compression, at the cost of higher time and/or memory requirements.
 
 History:
 
+2018-01-03:  Version 4.5. Fixes and convenience features:
+             Crunched programs no longer depend on undocumented A3 contents.
+             This fixes programs with icon crashing when run from Workbench.
+             Quick -1, ..., -9 options for compression presets.
+             Option to process hunks of executable without crunching.
+             Support empty hunks (padded to 4 bytes).
+             Print minimum safety margin for overlapped data decrunching.
+
 2015-01-18:  Version 4.4. Optimizations galore:
              New match finder based on a suffix array.
              New reference edge map based on a cuckoo hash table.
