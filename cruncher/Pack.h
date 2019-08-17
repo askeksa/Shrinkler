@@ -1,4 +1,4 @@
-// Copyright 1999-2015 Aske Simon Christensen. See LICENSE.txt for usage terms.
+// Copyright 1999-2019 Aske Simon Christensen. See LICENSE.txt for usage terms.
 
 /*
 
@@ -78,8 +78,8 @@ public:
 void packData(unsigned char *data, int data_length, int zero_padding, PackParams *params, Coder *result_coder, RefEdgeFactory *edge_factory, bool show_progress) {
 	MatchFinder finder(data, data_length, 2, params->match_patience, params->max_same_length);
 	LZParser parser(data, data_length, zero_padding, finder, params->length_margin, params->skip_length, edge_factory);
-	int real_size = 0;
-	int best_size = 999999999;
+	result_size_t real_size = 0;
+	result_size_t best_size = (result_size_t)1 << (32 + 3 + Coder::BIT_PRECISION);
 	int best_result = 0;
 	vector<LZParseResult> results(2);
 	CountingCoder *counting_coder = new CountingCoder(LZEncoder::NUM_CONTEXTS);

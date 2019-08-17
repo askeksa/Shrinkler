@@ -1,4 +1,4 @@
-// Copyright 1999-2018 Aske Simon Christensen. See LICENSE.txt for usage terms.
+// Copyright 1999-2019 Aske Simon Christensen. See LICENSE.txt for usage terms.
 
 /*
 
@@ -169,14 +169,16 @@ struct LZResultEdge {
 	friend class LZParseResult;
 };
 
+typedef unsigned long long result_size_t;
+
 class LZParseResult {
 	vector<LZResultEdge> edges;
 	const unsigned char *data;
 	int data_length;
 	int zero_padding;
 public:
-	int encode(const LZEncoder& result_encoder) const {
-		int size = 0;
+	result_size_t encode(const LZEncoder& result_encoder) const {
+		result_size_t size = 0;
 		int pos = 0;
 		LZState state;
 		result_encoder.setInitialState(&state);
