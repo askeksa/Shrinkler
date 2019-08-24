@@ -1,4 +1,4 @@
-// Copyright 1999-2015 Aske Simon Christensen. See LICENSE.txt for usage terms.
+// Copyright 1999-2019 Aske Simon Christensen. See LICENSE.txt for usage terms.
 
 /*
 
@@ -27,6 +27,8 @@ are reported. The matches reported will be the closest ones of that length.
 
 using std::vector;
 
+#include "SuffixArray.h"
+
 class MatchFinder {
 	// Inputs
 	unsigned char *data;
@@ -54,52 +56,17 @@ class MatchFinder {
 	// Best matches seen with current length
 	std::priority_queue<int, vector<int>, std::greater<int> > match_buffer;
 
-	struct suffix_compare {
-		MatchFinder* finder;
-
-		suffix_compare(MatchFinder* finder) : finder(finder) {}
-
-		// Compare suffixes starting at positions a and b
-		bool operator()(int a, int b) {
-			vector<int>& same = finder->rev_suffix_array;
-			unsigned char *data = finder->data;
-			if (a == b) return false;
-			if (data[a] == data[b]) {
-				// Skip stretch of equal bytes
-				int skip = std::min(same[a], same[b]);
-				a += skip;
-				b += skip;
-			}
-			int until_end = finder->length - std::max(a,b);
-			for (int i = 0 ; i < until_end ; i++) {
-				if (data[a + i] != data[b + i]) {
-					return data[a + i] < data[b + i];
-				}
-			}
-			return a < b;
-		}
-	};
-
-	// Quick'n'dirty suffix array construction:
-	// plain sorting with accelleration of same-value blocks
 	void make_suffix_array() {
-		// Temporary same-value block accelleration array
+		// Use reverse suffix array to store string as integers with sentinel
 		rev_suffix_array.resize(length + 1);
-		int count = 0;
-		char c = 0;
-		rev_suffix_array[length] = 0;
-		for (int i = length - 1 ; i >= 0 ; i--) {
-			if (data[i] != c) count = 0;
-			rev_suffix_array[i] = ++count;
-			c = data[i];
+		for (int i = 0; i < length ; i++) {
+			rev_suffix_array[i] = data[i] + 1;
 		}
+		rev_suffix_array[length] = 0;
 
 		// Compute suffix array
 		suffix_array.resize(length + 1);
-		for (int i = 0 ; i <= length ; i++) {
-			suffix_array[i] = i;
-		}
-		std::sort(&suffix_array[0], &suffix_array[length], suffix_compare(this));
+		computeSuffixArray(&rev_suffix_array[0], &suffix_array[0], length + 1, 257);
 
 		// Compute reverse suffix array
 		for (int i = 0 ; i <= length ; i++) {
@@ -113,8 +80,8 @@ class MatchFinder {
 		int h = 0;
 		for (int i = 0 ; i < length ; i++) {
 			int r = rev_suffix_array[i];
-			if (r > 0) {
-				int j = suffix_array[r - 1];
+			if (r < length) {
+				int j = suffix_array[r + 1];
 				while (data[i + h] == data[j + h]) {
 					h = h + 1;
 				}
@@ -127,8 +94,8 @@ class MatchFinder {
 	void extend_left() {
 		int iter = 0;
 		while (left_length >= min_length) {
-			left_length = std::min(left_length, longest_common_prefix[left_index]);
-			int pos = suffix_array[--left_index];
+			left_length = std::min(left_length, longest_common_prefix[--left_index]);
+			int pos = suffix_array[left_index];
 			if (pos < current_pos && pos >= min_pos) break;
 			if (++iter > match_patience) left_length = 0;
 		}
@@ -137,7 +104,7 @@ class MatchFinder {
 	void extend_right() {
 		int iter = 0;
 		while (right_length >= min_length) {
-			right_length = std::min(right_length, longest_common_prefix[++right_index]);
+			right_length = std::min(right_length, longest_common_prefix[right_index++]);
 			int pos = suffix_array[right_index];
 			if (pos < current_pos && pos >= min_pos) break;
 			if (++iter > match_patience) right_length = 0;
