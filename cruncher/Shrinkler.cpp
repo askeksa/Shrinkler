@@ -209,7 +209,7 @@ int main2(int argc, const char *argv[]) {
 	IntParameter    same_length   ("-a", "--same-length",     1,   100000,   10*p, argc, argv, consumed);
 	IntParameter    effort        ("-e", "--effort",          0,   100000,  100*p, argc, argv, consumed);
 	IntParameter    skip_length   ("-s", "--skip-length",     2,   100000, 1000*p, argc, argv, consumed);
-	IntParameter    references    ("-r", "--references",   1000, 10000000, 100000, argc, argv, consumed);
+	IntParameter    references    ("-r", "--references",   1000,100000000, 100000, argc, argv, consumed);
 	StringParameter text          ("-t", "--text",                                 argc, argv, consumed);
 	StringParameter textfile      ("-T", "--textfile",                             argc, argv, consumed);
 	HexParameter    flash         ("-f", "--flash",                             0, argc, argv, consumed);
