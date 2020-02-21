@@ -1,4 +1,4 @@
-// Copyright 1999-2017 Aske Simon Christensen. See LICENSE.txt for usage terms.
+// Copyright 1999-2020 Aske Simon Christensen. See LICENSE.txt for usage terms.
 
 /*
 
@@ -384,8 +384,7 @@ public:
 			unsigned flags = hunks[h].flags, type;
 			int hunk_length, symlen, n_symbols;
 			int lh = h;
-			printf("%4d  %s ", h, flags == HUNKF_CHIP ? "CHIP" : flags == HUNKF_FAST ? "FAST" : "ANY ");
-			int missing_relocs = 0;
+			bool missing_relocs = false;
 			const char *note = "";
 			while (lh == h) {
 				if (index >= length) {
@@ -401,7 +400,7 @@ public:
 				if (missing_relocs && type != HUNK_RELOC32) {
 					printf("        %s\n", note);
 					note = "";
-					missing_relocs = 0;
+					missing_relocs = false;
 				}
 				switch (type) {
 				case HUNK_UNIT:
@@ -431,7 +430,9 @@ public:
 					}
 					hunks[h].type = type;
 					hunks[h].datasize = data[index++];
-					printf("%4s%10d %10d", hunktype[type-HUNK_UNIT], hunks[h].memsize*4, hunks[h].datasize*4);
+					printf("%4d  %s %4s%10d %10d",
+						h, flags == HUNKF_CHIP ? "CHIP" : flags == HUNKF_FAST ? "FAST" : "ANY ",
+						hunktype[type-HUNK_UNIT], hunks[h].memsize*4, hunks[h].datasize*4);
 					if (type != HUNK_BSS) {
 						hunks[h].datastart = index;
 						index += hunks[h].datasize;
@@ -450,7 +451,7 @@ public:
 						hunks[h].memsize = hunks[h].datasize;
 					}
 					nh = h+1;
-					missing_relocs = 1;
+					missing_relocs = true;
 					break;
 				case HUNK_RELOC32:
 					hunks[h].relocstart = index;
@@ -472,7 +473,7 @@ public:
 						hunks[h].relocentries = tot;
 						printf("  %6d%s\n", tot, note);
 						note = "";
-						missing_relocs = 0;
+						missing_relocs = false;
 					}
 					break;
 				case HUNK_END:
@@ -496,10 +497,10 @@ public:
 				case HUNK_RELOC32SHORT:
 				case HUNK_RELRELOC32:
 				case HUNK_ABSRELOC16:
-					printf("%s (unsupported)\n",hunktype[type-HUNK_UNIT]);
+					printf("           %s (unsupported)\n",hunktype[type-HUNK_UNIT]);
 					return false;
 				default:
-					printf("Unknown (%08X)\n",type);
+					printf("           Unknown (%08X)\n",type);
 					return false;
 				}
 			}
