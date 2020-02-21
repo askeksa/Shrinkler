@@ -40,13 +40,19 @@ const char *hunktype[HUNK_ABSRELOC16-HUNK_UNIT+1] = {
 
 class HunkInfo {
 public:
-	HunkInfo() { type = 0; relocentries = 0; }
+	HunkInfo() {
+		type = 0;
+		relocstart = 0;
+		relocshortstart = 0;
+		relocentries = 0;
+	}
 
 	unsigned type;        // HUNK_<type>
 	unsigned flags;       // HUNKF_<flag>
 	int memsize,datasize; // longwords
 	int datastart;        // longword index in file
 	int relocstart;       // longword index in file
+	int relocshortstart;  // longword index in file
 	int relocentries;     // no. of entries
 };
 
@@ -145,6 +151,7 @@ public:
 class HunkFile {
 	vector<Longword> data;
 	vector<HunkInfo> hunks;
+	int relocshort_total_size;
 
 	vector<unsigned> compress_hunks(PackParams *params, bool overlap, bool mini, RefEdgeFactory *edge_factory, bool show_progress) {
 		int numhunks = hunks.size();
@@ -193,7 +200,7 @@ class HunkFile {
 				int reloc_size = 0;
 				for (int rh = 0 ; rh < numhunks ; rh++) {
 					vector<int> offsets;
-					if (hunks[h].relocentries > 0) {
+					if (hunks[h].relocstart != 0) {
 						int spos = hunks[h].relocstart;
 						while (data[spos] != 0) {
 							int rn = data[spos++];
@@ -363,6 +370,7 @@ public:
 			return false;
 		}
 
+		hunks.clear();
 		hunks.resize(numhunks);
 		for (int h = 0 ; h < numhunks ; h++) {
 			hunks[h].memsize = data[index] & 0x0fffffff;
@@ -377,6 +385,8 @@ public:
 			}
 			index++;
 		}
+
+		relocshort_total_size = 0;
 
 		// Parse hunks
 		printf("Hunk  Mem  Type  Mem size  Data size  Data sum  Relocs\n");
@@ -397,8 +407,12 @@ public:
 					return false;
 				}
 
-				if (missing_relocs && type != HUNK_RELOC32) {
-					printf("        %s\n", note);
+				if (missing_relocs && type != HUNK_RELOC32 && type != HUNK_RELOC32SHORT && type != HUNK_DREL32) {
+					if (hunks[h].relocentries > 0) {
+						printf("  %6d%s\n", hunks[h].relocentries, note);
+					} else {
+						printf("        %s\n", note);
+					}
 					note = "";
 					missing_relocs = false;
 				}
@@ -454,15 +468,19 @@ public:
 					missing_relocs = true;
 					break;
 				case HUNK_RELOC32:
+					if (hunks[h].relocstart != 0) {
+						printf("\nMultiple reloc tables!\n");
+						return false;
+					}
 					hunks[h].relocstart = index;
 					{
-						int n,tot = 0;
+						int n;
 						while ((n = data[index++]) != 0) {
 							if (n < 0 || index+n+2 >= length || data[index++] >= numhunks) {
 								printf("\nError in reloc table!\n");
 								return false;
 							}
-							tot += n;
+							hunks[h].relocentries += n;
 							while (n--) {
 								if (data[index++] > hunks[h].memsize*4-4) {
 									printf("\nError in reloc table!\n");
@@ -470,10 +488,36 @@ public:
 								}
 							}
 						}
-						hunks[h].relocentries = tot;
-						printf("  %6d%s\n", tot, note);
 						note = "";
-						missing_relocs = false;
+					}
+					break;
+				case HUNK_RELOC32SHORT:
+				case HUNK_DREL32:
+					if (hunks[h].relocshortstart != 0) {
+						printf("\nMultiple reloc tables!\n");
+						return false;
+					}
+					hunks[h].relocshortstart = index;
+					{
+						Word *word_data = (Word *) &data[index];
+						int word_index = 0;
+						int n;
+						while ((n = word_data[word_index++]) != 0) {
+							if (n < 0 || index + (word_index+n+2)/2+1 >= length || word_data[word_index++] >= numhunks) {
+								printf("\nError in reloc table!\n");
+								return false;
+							}
+							hunks[h].relocentries += n;
+							while (n--) {
+								if (word_data[word_index++] > hunks[h].memsize*4-4) {
+									printf("\nError in reloc table!\n");
+									return false;
+								}
+							}
+						}
+						int size_in_longwords = (word_index+1)/2;
+						index += size_in_longwords;
+						relocshort_total_size += size_in_longwords;
 					}
 					break;
 				case HUNK_END:
@@ -489,12 +533,10 @@ public:
 				case HUNK_HEADER:
 				case HUNK_OVERLAY:
 				case HUNK_BREAK:
-				case HUNK_DREL32:
 				case HUNK_DREL16:
 				case HUNK_DREL8:
 				case HUNK_LIB:
 				case HUNK_INDEX:
-				case HUNK_RELOC32SHORT:
 				case HUNK_RELRELOC32:
 				case HUNK_ABSRELOC16:
 					printf("           %s (unsupported)\n",hunktype[type-HUNK_UNIT]);
@@ -511,6 +553,10 @@ public:
 		}
 		printf("\n");
 		return true;
+	}
+
+	bool requires_hunk_processing() {
+		return relocshort_total_size != 0;
 	}
 
 	int memory_usage(bool include_last_hunk) {
@@ -568,7 +614,7 @@ public:
 	HunkFile* merge_hunks(const vector<pair<unsigned, vector<int> > >& hunklist) {
 		int numhunks = hunks.size();
 		int dnh = hunklist.size();
-		int bufsize = data.size()+3; // Reloc can write 3 further temporarily.
+		int bufsize = data.size()+relocshort_total_size+3; // Reloc can write 3 further temporarily.
 
 		// Calculate safe size of new file buffer
 		for (int dh = 0 ; dh < dnh ; dh++) {
@@ -660,7 +706,7 @@ public:
 				// Transfer all appropriate reloc entries.
 				int rtot = 0; // Total number of relocs in hunk
 				for (int sh = 0 ; sh < numhunks ; sh++) {
-					if (dhunk[sh] == dh && hunks[sh].relocentries > 0) {
+					if (dhunk[sh] == dh && hunks[sh].relocstart != 0) {
 						int spos = hunks[sh].relocstart;
 						int rn; // Number of relocs
 						while ((rn = data[spos++]) > 0) {
@@ -674,6 +720,24 @@ public:
 								}
 							} else {
 								spos += rn;
+							}
+						}
+					}
+					if (dhunk[sh] == dh && hunks[sh].relocshortstart != 0) {
+						Word *word_data = (Word *) &data[hunks[sh].relocshortstart];
+						int word_spos = 0;
+						int rn; // Number of relocs
+						while ((rn = word_data[word_spos++]) > 0) {
+							int srh = word_data[word_spos++]; // Source reloc target hunk
+							if (dhunk[srh] == drh) {
+								rtot += rn;
+								for (int ri = 0 ; ri < rn ; ri++) {
+									int rv = word_data[word_spos++]; // Reloc value
+									ef->data[dpos++] = rv+offset[sh];
+									*((Longword *)&bytes[rv+offset[sh]]) += offset[srh];
+								}
+							} else {
+								word_spos += rn;
 							}
 						}
 					}
@@ -691,6 +755,7 @@ public:
 			// End the reloc section.
 			// If there are no relocs, remove the reloc header.
 			if (ef->hunks[dh].relocentries == 0) {
+				ef->hunks[dh].relocstart = 0;
 				dpos -= 1;
 			} else {
 				ef->data[dpos++] = 0;

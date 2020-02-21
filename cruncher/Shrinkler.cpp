@@ -1,4 +1,4 @@
-// Copyright 1999-2018 Aske Simon Christensen. See LICENSE.txt for usage terms.
+// Copyright 1999-2020 Aske Simon Christensen. See LICENSE.txt for usage terms.
 
 /*
 
@@ -343,7 +343,7 @@ int main2(int argc, const char *argv[]) {
 			internal_error();
 		}
 		orig = merged;
-	} else if (no_crunch.seen) {
+	} else if (no_crunch.seen || orig->requires_hunk_processing()) {
 		printf("Processing hunks...\n\n");
 		HunkFile *processed = orig->merge_hunks(orig->identity_hunklist());
 		delete orig;
