@@ -15,6 +15,13 @@ compression, at the cost of higher time and/or memory requirements.
 
 History:
 
+2020-02-22:  Version 4.6. Better support for large files:
+             Faster suffix array construction (the pause before each hunk).
+             Fixed verify error when compressed size is above roughly 2MB.
+             Increased max number of reference edges to 100000000.
+             Support HUNK_RELOC32SHORT and HUNK_DREL32 relocation hunks.
+             Fixed broken output formatting when the first hunk is skipped.
+
 2018-01-03:  Version 4.5. Fixes and convenience features:
              Crunched programs no longer depend on undocumented A3 contents.
              This fixes programs with icon crashing when run from Workbench.
