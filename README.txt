@@ -12,6 +12,9 @@ Run with no arguments for a list of options. For the options controlling
 compression efficiency, higher values generally result in better
 compression, at the cost of higher time and/or memory requirements.
 
+Data decompression source code for 68000 is included. A version for Z80 is
+here: http://www.cpcwiki.eu/forum/programming/shrinkler-z80-decrunch-routine
+
 
 History:
 
@@ -21,6 +24,7 @@ History:
              Increased max number of reference edges to 100000000.
              Support HUNK_RELOC32SHORT and HUNK_DREL32 relocation hunks.
              Fixed broken output formatting when the first hunk is skipped.
+             Included link to Z80 decompressor in README.
 
 2018-01-03:  Version 4.5. Fixes and convenience features:
              Crunched programs no longer depend on undocumented A3 contents.
