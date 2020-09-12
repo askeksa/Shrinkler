@@ -1,4 +1,4 @@
-// Copyright 1999-2019 Aske Simon Christensen. See LICENSE.txt for usage terms.
+// Copyright 1999-2020 Aske Simon Christensen. See LICENSE.txt for usage terms.
 
 /*
 
@@ -97,17 +97,24 @@ class MatchFinder {
 			left_length = std::min(left_length, longest_common_prefix[--left_index]);
 			int pos = suffix_array[left_index];
 			if (pos < current_pos && pos >= min_pos) break;
-			if (++iter > match_patience) left_length = 0;
+			if (++iter > match_patience) {
+				left_length = 0;
+				break;
+			}
 		}
 	}
 
 	void extend_right() {
 		int iter = 0;
-		while (right_length >= min_length) {
-			right_length = std::min(right_length, longest_common_prefix[right_index++]);
-			int pos = suffix_array[right_index];
+		while (true) {
+			right_length = std::min(right_length, longest_common_prefix[right_index]);
+			if (right_length < min_length) break;
+			int pos = suffix_array[++right_index];
 			if (pos < current_pos && pos >= min_pos) break;
-			if (++iter > match_patience) right_length = 0;
+			if (++iter > match_patience) {
+				right_length = 0;
+				break;
+			}
 		}
 	}
 
@@ -131,10 +138,10 @@ public:
 		min_pos = 0;
 
 		left_index = rev_suffix_array[pos];
-		left_length = length;
+		left_length = length - pos;
 		extend_left();
 		right_index = rev_suffix_array[pos];
-		right_length = length;
+		right_length = length - pos;
 		extend_right();
 	}
 
