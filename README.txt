@@ -14,6 +14,7 @@ compression, at the cost of higher time and/or memory requirements.
 
 Data decompression source code for 68000 is included. A version for Z80 is
 here: http://www.cpcwiki.eu/forum/programming/shrinkler-z80-decrunch-routine
+A version for 6502 is here: https://github.com/atari8xxl/unShrinkler
 
 
 History:
