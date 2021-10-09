@@ -245,7 +245,7 @@ class HunkFile {
 		printf("Verifying... ");
 		fflush(stdout);
 		RangeDecoder decoder(LZEncoder::NUM_CONTEXTS + NUM_RELOC_CONTEXTS, pack_buffer);
-		LZDecoder lzd(&decoder);
+		LZDecoder lzd(&decoder, true);
 		for (int h = 0 ; h < (mini ? 1 : numhunks) ; h++) {
 			unsigned char *hunk_data;
 			int hunk_data_length = hunks[h].datasize * 4;

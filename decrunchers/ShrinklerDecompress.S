@@ -22,6 +22,8 @@ NUM_CONTEXTS		=	1536
 ;      D0 = Number of bytes decompressed so far
 ;      A0 = Callback argument
 ; A3 = Callback argument
+; D7 = 0 to disable parity context (Shrinkler --bytes / -b option)
+;      1 to enable parity context (default Shrinkler compression)
 ;
 ; Uses 3 kilobytes of space on the stack.
 ; Preserves D2-D7/A2-A6 and assumes callback does the same.
@@ -71,7 +73,7 @@ ShrinklerDecompress:
 	bsr.b	GetNumber
 .copyloop:
 	move.b	(a5,d5.l),(a5)+
-	subq.l	#1,d7
+	subq.l	#1,d0
 	bne.b	.copyloop
 	bsr.b	ReportProgress
 	; After reference
@@ -81,7 +83,7 @@ ShrinklerDecompress:
 	moveq.l	#3,d6
 	bsr.b	GetNumber
 	moveq.l	#2,d5
-	sub.l	d7,d5
+	sub.l	d0,d5
 	bne.b	.readlength
 
 	lea.l	NUM_CONTEXTS*2(a7),a7
@@ -100,26 +102,25 @@ ReportProgress:
 
 GetKind:
 	; Use parity as context
-	move.l	a5,d1
-	moveq.l	#1,d6
-	and.l	d1,d6
+	move.l	a5,d6
+	and.l	d7,d6
 	lsl.w	#8,d6
 	bra.b	GetBit
 
 GetNumber:
 	; D6 = Number context
 
-	; Out: Number in D7
+	; Out: Number in D0
 	lsl.w	#8,d6
 .numberloop:
 	addq.b	#2,d6
 	bsr.b	GetBit
 	bcs.b	.numberloop
-	moveq.l	#1,d7
+	moveq.l	#1,d0
 	subq.b	#1,d6
 .bitsloop:
 	bsr.b	GetBit
-	addx.l	d7,d7
+	addx.l	d0,d0
 	subq.b	#2,d6
 	bcc.b	.bitsloop
 	rts

@@ -49,11 +49,11 @@ class DataFile {
 		return pack_buffer;		
 	}
 
-	int verify(vector<unsigned>& pack_buffer) {
+	int verify(PackParams *params, vector<unsigned>& pack_buffer) {
 		printf("Verifying... ");
 		fflush(stdout);
 		RangeDecoder decoder(LZEncoder::NUM_CONTEXTS + NUM_RELOC_CONTEXTS, pack_buffer);
-		LZDecoder lzd(&decoder);
+		LZDecoder lzd(&decoder, params->parity_context);
 
 		// Verify data
 		bool error = false;
@@ -116,7 +116,7 @@ public:
 
 	DataFile* crunch(PackParams *params, RefEdgeFactory *edge_factory, bool show_progress) {
 		vector<unsigned> pack_buffer = compress(params, edge_factory, show_progress);
-		int margin = verify(pack_buffer);
+		int margin = verify(params, pack_buffer);
 
 		printf("Minimum safety margin for overlapped decrunching: %d\n\n", margin);
 

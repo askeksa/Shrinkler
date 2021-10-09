@@ -27,6 +27,7 @@ void usage() {
 	printf("\n");
 	printf("Available options are (default values in parentheses):\n");
 	printf(" -d, --data           Treat input as raw data, rather than executable\n");
+	printf(" -b, --bytes          Disable parity context - better on byte-oriented data\n");
 	printf(" -h, --hunkmerge      Merge hunks of the same memory type\n");
 	printf(" -u, --no-crunch      Process hunks without crunching\n");
 	printf(" -o, --overlap        Overlap compressed and decompressed data to save memory\n");
@@ -200,6 +201,7 @@ int main2(int argc, const char *argv[]) {
 	int p = preset.value;
 
 	FlagParameter   data          ("-d", "--data",                                 argc, argv, consumed);
+	FlagParameter   bytes         ("-b", "--bytes",                                argc, argv, consumed);
 	FlagParameter   hunkmerge     ("-h", "--hunkmerge",                            argc, argv, consumed);
 	FlagParameter   no_crunch     ("-u", "--no-crunch",                            argc, argv, consumed);
 	FlagParameter   overlap       ("-o", "--overlap",                              argc, argv, consumed);
@@ -230,6 +232,11 @@ int main2(int argc, const char *argv[]) {
 	if (data.seen && (hunkmerge.seen || overlap.seen || mini.seen || text.seen || textfile.seen || flash.seen)) {
 		printf("Error: The data option cannot be used together with any of the\n");
 		printf("hunkmerge, overlap, mini, text, textfile or flash options.\n\n");
+		usage();
+	}
+
+	if (bytes.seen && !data.seen) {
+		printf("Error: The bytes option can only be used together with the data option.\n\n");
 		usage();
 	}
 
@@ -271,6 +278,7 @@ int main2(int argc, const char *argv[]) {
 	const char *outfile = files[1];
 
 	PackParams params;
+	params.parity_context = !bytes.seen;
 	params.iterations = iterations.value;
 	params.length_margin = length_margin.value;
 	params.skip_length = skip_length.value;

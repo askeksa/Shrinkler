@@ -85,6 +85,7 @@ class LZEncoder {
 	static const int CONTEXT_GROUP_LENGTH = 3;
 
 	Coder *coder;
+	int parity_mask;
 
 	int code(int context, int bit) const {
 		return coder->code(NUM_SINGLE_CONTEXTS + context, bit);
@@ -104,7 +105,7 @@ public:
 	static const int NUMBER_CONTEXT_OFFSET = (NUM_SINGLE_CONTEXTS + CONTEXT_GROUP_OFFSET * CONTEXT_GROUP_SIZE);
 	static const int NUM_NUMBER_CONTEXTS = 2;
 
-	LZEncoder(Coder *coder) : coder(coder) {
+	LZEncoder(Coder *coder, bool parity_context) : coder(coder), parity_mask(parity_context ? 1 : 0) {
 
 	}
 
@@ -123,14 +124,15 @@ public:
 	}
 
 	int encodeLiteral(unsigned char value, const LZState *state_before, LZState *state_after) const {
+		int parity_offset = (state_before->parity & parity_mask) << 8;
 		int size = 0;
 		if (state_before->after_first) {
-			size += code(CONTEXT_KIND + (state_before->parity << 8), KIND_LIT);
+			size += code(CONTEXT_KIND + parity_offset, KIND_LIT);
 		}
 		int context = 1;
 		for (int i = 7 ; i >= 0 ; i--) {
 			int bit = ((value >> i) & 1);
-			size += code((state_before->parity << 8) | context, bit);
+			size += code(parity_offset | context, bit);
 			context = (context << 1) | bit;
 		}
 
@@ -147,7 +149,8 @@ public:
 		assert(length >= 2);
 		assert(state_before->after_first);
 
-		int size = code(CONTEXT_KIND + (state_before->parity << 8), KIND_REF);
+		int parity_offset = (state_before->parity & parity_mask) << 8;
+		int size = code(CONTEXT_KIND + parity_offset, KIND_REF);
 		int rep_offset = offset == state_before->last_offset;
 		if (!state_before->prev_was_ref) {
 			size += code(CONTEXT_REPEATED, rep_offset);
@@ -168,7 +171,8 @@ public:
 	}
 
 	int finish(const LZState *state_before) const {
-		int size = code(CONTEXT_KIND + (state_before->parity << 8), KIND_REF);
+		int parity_offset = (state_before->parity & parity_mask) << 8;
+		int size = code(CONTEXT_KIND + parity_offset, KIND_REF);
 		if (!state_before->prev_was_ref) {
 			size += code(CONTEXT_REPEATED, 0);
 		}

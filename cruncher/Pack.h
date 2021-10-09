@@ -16,6 +16,8 @@ Pack a data block in multiple iterations, reporting progress along the way.
 #include "LZParser.h"
 
 struct PackParams {
+	bool parity_context;
+
 	int iterations;
 	int length_margin;
 	int skip_length;
@@ -98,13 +100,13 @@ void packData(unsigned char *data, int data_length, int zero_padding, PackParams
 		Coder *measurer = new SizeMeasuringCoder(counting_coder);
 		measurer->setNumberContexts(LZEncoder::NUMBER_CONTEXT_OFFSET, LZEncoder::NUM_NUMBER_CONTEXTS, data_length);
 		finder.reset();
-		result = parser.parse(LZEncoder(measurer), progress);
+		result = parser.parse(LZEncoder(measurer, params->parity_context), progress);
 		delete measurer;
 
 		// Encode result using adaptive range coding
 		vector<unsigned> dummy_result;
 		RangeCoder *range_coder = new RangeCoder(LZEncoder::NUM_CONTEXTS, dummy_result);
-		real_size = result.encode(LZEncoder(range_coder));
+		real_size = result.encode(LZEncoder(range_coder, params->parity_context));
 		range_coder->finish();
 		delete range_coder;
 
@@ -119,7 +121,7 @@ void packData(unsigned char *data, int data_length, int zero_padding, PackParams
 
 		// Count symbol frequencies
 		CountingCoder *new_counting_coder = new CountingCoder(LZEncoder::NUM_CONTEXTS);
-		result.encode(LZEncoder(counting_coder));
+		result.encode(LZEncoder(counting_coder, params->parity_context));
 	
 		// New size measurer based on frequencies
 		CountingCoder *old_counting_coder = counting_coder;
@@ -130,5 +132,5 @@ void packData(unsigned char *data, int data_length, int zero_padding, PackParams
 	delete progress;
 	delete counting_coder;
 
-	results[best_result].encode(LZEncoder(result_coder));
+	results[best_result].encode(LZEncoder(result_coder, params->parity_context));
 }

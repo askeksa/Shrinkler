@@ -20,6 +20,7 @@ public:
 
 class LZDecoder {
 	Decoder *decoder;
+	int parity_mask;
 
 	int decode(int context) const {
 		return decoder->decode(LZEncoder::NUM_SINGLE_CONTEXTS + context);
@@ -30,7 +31,7 @@ class LZDecoder {
 	}
 
 public:
-	LZDecoder(Decoder *decoder) : decoder(decoder) {
+	LZDecoder(Decoder *decoder, bool parity_context) : decoder(decoder), parity_mask(parity_context ? 1 : 0) {
 
 	}
 
@@ -54,7 +55,7 @@ public:
 				pos += length;
 				prev_was_ref = true;
 			} else {
-				int parity = pos & 1;
+				int parity = pos & parity_mask;
 				int context = 1;
 				for (int i = 7 ; i >= 0 ; i--) {
 					int bit = decode((parity << 8) | context);
@@ -65,7 +66,7 @@ public:
 				pos += 1;
 				prev_was_ref = false;
 			}
-			int parity = pos & 1;
+			int parity = pos & parity_mask;
 			ref = decode(LZEncoder::CONTEXT_KIND + (parity << 8));
 		} while (true);
 		return true;
