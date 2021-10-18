@@ -33,30 +33,12 @@ endif
 
 ifeq ($(PLATFORM),amiga)
 
-# Amiga build, using GCC and ixemul
+# Amiga build, using Amiga-GCC
 
-TOOLCHAIN_DIR := toolchain
-AMIGA_GCC_DIR := $(TOOLCHAIN_DIR)/GCC-4.5.0-m68k-amigaos-cygwin/usr/local/amiga
-BINUTILS_DIR  := $(TOOLCHAIN_DIR)/amiga-binutils
-INCLUDE_DIR   := $(TOOLCHAIN_DIR)/C++include/include
-LIB_DIR1      := $(TOOLCHAIN_DIR)/C++include/lib
-LIB_DIR2      := $(AMIGA_GCC_DIR)/lib/gcc/m68k-amigaos/4.5.0
-LIB_DIR3      := $(TOOLCHAIN_DIR)/ixemul-sdk/lib
-
-CC       := $(AMIGA_GCC_DIR)/bin/m68k-amigaos-g++
+CC       := m68k-amigaos-g++
+LINK     := m68k-amigaos-g++
 CFLAGS   += -m68000
-INCLUDE  += -I $(INCLUDE_DIR)/c++/4.3.2 -I $(INCLUDE_DIR)/c++/4.3.2/m68k-amigaos -I $(INCLUDE_DIR)
-
-ASM      := $(BINUTILS_DIR)/as
-ASMFLAGS :=
-
-LINK     := $(BINUTILS_DIR)/ld
-STARTUP  := $(LIB_DIR3)/crt0.o
-LIBS     := -L $(LIB_DIR1) -L $(LIB_DIR2) -L $(LIB_DIR3) -lstdc++ -lgcc -lc
-
-$(BUILD_DIR)/%.o: cruncher/%.cpp
-	$(CC) $(CFLAGS) $(INCLUDE) $< -S -o $(@:%.o=%.s)
-	$(ASM) $(ASMFLAGS) $(@:%.o=%.s) -o $@
+LFLAGS   += -noixemul
 
 else
 ifeq ($(PLATFORM),windows-32)
@@ -100,17 +82,10 @@ endif
 
 endif
 endif
-
-# Common setup for non-Amiga builds
-
-INCLUDE  +=
-STARTUP  :=
-LIBS     :=
+endif
 
 $(BUILD_DIR)/%.o: cruncher/%.cpp
 	$(CC) $(CFLAGS) $(INCLUDE) $< -c -o $@
-
-endif
 
 
 HEADERS  := Header1.dat Header1T.dat Header2.dat OverlapHeader.dat OverlapHeaderT.dat MiniHeader.dat
@@ -121,7 +96,7 @@ $(BUILD_DIR)/Shrinkler.o: cruncher/*.h $(patsubst %,decrunchers_bin/%,$(HEADERS)
 	python -c 'for b in open("$^", "rb").read(): print ("0x%02X," % ord(b)),' > $@
 
 $(BUILD_DIR)/Shrinkler: $(BUILD_DIR)/Shrinkler.o
-	$(LINK) $(LFLAGS) $(STARTUP) $< $(LIBS) -o $@
+	$(LINK) $(LFLAGS) $< -o $@
 
 clean:
 	rm -rf build
