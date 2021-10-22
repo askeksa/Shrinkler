@@ -14,7 +14,7 @@ MKDIR_DUMMY   := $(shell mkdir -p $(BUILD_DIR))
 all: $(BUILD_DIR)/Shrinkler
 
 # Common flags
-CFLAGS := -Wall -Wno-sign-compare
+CFLAGS := -Wall -Wno-sign-compare -Wno-narrowing
 LFLAGS :=
 
 ifdef DEBUG

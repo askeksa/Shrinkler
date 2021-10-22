@@ -871,7 +871,6 @@ public:
 			ef->data[dpos++] = HUNK_CODE;
 			ef->data[dpos++] = header1_size;
 			if (decrunch_text) {
-				memset(&ef->data[dpos], 0, header1_size);
 				memcpy(&ef->data[dpos], Header1T, sizeof(Header1T));
 				char *text_dest = ((char *) &ef->data[dpos]) + sizeof(Header1T);
 				memcpy(text_dest, decrunch_text->c_str(), decrunch_text->length());
@@ -919,10 +918,8 @@ public:
 		if (overlap) {
 			// Write decrunch text
 			if (decrunch_text) {
-				int rounded_text_size = (decrunch_text->length() + 3) & -4;
-				memset(&ef->data[dpos], 0, rounded_text_size);
 				memcpy(&ef->data[dpos], decrunch_text->c_str(), decrunch_text->length());
-				dpos += rounded_text_size / sizeof(Longword);
+				dpos += (decrunch_text->length() + 3) / sizeof(Longword);
 			}
 
 			// Set hunk sizes
