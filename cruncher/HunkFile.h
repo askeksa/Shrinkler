@@ -157,7 +157,7 @@ class HunkFile {
 		int numhunks = hunks.size();
 
 		vector<unsigned> pack_buffer;
-		RangeCoder *range_coder = new RangeCoder(LZEncoder::NUM_CONTEXTS + NUM_RELOC_CONTEXTS, pack_buffer);
+		RangeCoder range_coder(LZEncoder::NUM_CONTEXTS + NUM_RELOC_CONTEXTS, pack_buffer);
 
 		// Print compression status header
 		const char *ordinals[] = { "st", "nd", "rd", "th" };
@@ -173,7 +173,7 @@ class HunkFile {
 		// Crunch the hunks, one by one.
 		for (int h = 0 ; h < (mini ? 1 : numhunks) ; h++) {
 			printf("%4d  ", h);
-			range_coder->reset();
+			range_coder.reset();
 			switch (hunks[h].type) {
 			case HUNK_CODE:
 			case HUNK_DATA:
@@ -186,12 +186,12 @@ class HunkFile {
 						hunk_data_length--;
 					}
 					int zero_padding = mini ? 0 : hunks[h].memsize * 4 - hunk_data_length;
-					packData(hunk_data, hunk_data_length, zero_padding, params, range_coder, edge_factory, show_progress);
+					packData(hunk_data, hunk_data_length, zero_padding, params, &range_coder, edge_factory, show_progress);
 				}
 				break;
 			default:
 				int zero_padding = mini ? 0 : hunks[h].memsize * 4;
-				packData(NULL, 0, zero_padding, params, range_coder, edge_factory, show_progress);
+				packData(NULL, 0, zero_padding, params, &range_coder, edge_factory, show_progress);
 				break;
 			}
 
@@ -222,17 +222,17 @@ class HunkFile {
 							printf("\n\nError in input file: overlapping reloc entries.\n\n");
 							exit(1);
 						}
-						reloc_size += range_coder->encodeNumber(LZEncoder::NUM_CONTEXTS, delta);
+						reloc_size += range_coder.encodeNumber(LZEncoder::NUM_CONTEXTS, delta);
 						last_offset = offset;
 					}
-					reloc_size += range_coder->encodeNumber(LZEncoder::NUM_CONTEXTS, 2);
+					reloc_size += range_coder.encodeNumber(LZEncoder::NUM_CONTEXTS, 2);
 				}
 				printf("  %10.3f", reloc_size / (double) (8 << Coder::BIT_PRECISION));
 			}
 			printf("\n");
 			fflush(stdout);
 		}
-		range_coder->finish();
+		range_coder.finish();
 		printf("\n");
 
 		return pack_buffer;		

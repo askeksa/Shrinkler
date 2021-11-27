@@ -82,7 +82,8 @@ class MatchFinder {
 			int r = rev_suffix_array[i];
 			if (r < length) {
 				int j = suffix_array[r + 1];
-				while (data[i + h] == data[j + h]) {
+				int m = length - std::max(i, j);
+				while (h < m && data[i + h] == data[j + h]) {
 					h = h + 1;
 				}
 				longest_common_prefix[r] = h;

@@ -29,7 +29,7 @@ class DataFile {
 
 	vector<unsigned> compress(PackParams *params, RefEdgeFactory *edge_factory, bool show_progress) {
 		vector<unsigned> pack_buffer;
-		RangeCoder *range_coder = new RangeCoder(LZEncoder::NUM_CONTEXTS + NUM_RELOC_CONTEXTS, pack_buffer);
+		RangeCoder range_coder(LZEncoder::NUM_CONTEXTS + NUM_RELOC_CONTEXTS, pack_buffer);
 
 		// Print compression status header
 		const char *ordinals[] = { "st", "nd", "rd", "th" };
@@ -40,9 +40,9 @@ class DataFile {
 		printf("\n");
 
 		// Crunch the data
-		range_coder->reset();
-		packData(&data[0], data.size(), 0, params, range_coder, edge_factory, show_progress);
-		range_coder->finish();
+		range_coder.reset();
+		packData(&data[0], data.size(), 0, params, &range_coder, edge_factory, show_progress);
+		range_coder.finish();
 		printf("\n\n");
 		fflush(stdout);
 

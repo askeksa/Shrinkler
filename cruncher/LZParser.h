@@ -70,6 +70,7 @@ class RefEdge {
 		if (source != NULL) {
 			source->refcount++;
 		}
+		_heap_index = 0;
 	}
 
 	int target() {
