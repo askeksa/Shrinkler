@@ -1,4 +1,4 @@
-// Copyright 1999-2020 Aske Simon Christensen. See LICENSE.txt for usage terms.
+// Copyright 1999-2022 Aske Simon Christensen. See LICENSE.txt for usage terms.
 
 /*
 
@@ -806,6 +806,17 @@ public:
 		HunkFile *ef = new HunkFile;
 		ef->data.resize(bufsize, 0);
 
+#define WRITE_HEADER(header) do {                                             \
+	ppos = dpos;                                                              \
+	memcpy(&ef->data[dpos], header, sizeof(header));                          \
+	dpos += sizeof(header) / sizeof(Longword);                                \
+} while (false)
+
+#define WRITE_TEXT() do {                                                     \
+	memcpy(&ef->data[dpos], decrunch_text->c_str(), decrunch_text->length()); \
+	dpos += (decrunch_text->length() + 3) / sizeof(Longword);                 \
+} while (false)
+
 		int dpos = 0;
 
 		// Write new hunk header
@@ -828,15 +839,12 @@ public:
 			// Write header
 			ef->data[dpos++] = HUNK_CODE;
 			lpos2 = dpos++;
-			ppos = dpos;
 			if (decrunch_text) {
-				memcpy(&ef->data[dpos], OverlapHeaderT, sizeof(OverlapHeaderT));
-				dpos += sizeof(OverlapHeaderT) / sizeof(Longword);
+				WRITE_HEADER(OverlapHeaderT);
 				ef->data[ppos + 10] = decrunch_text->length(); // Immediate for length of text
 				offsetp = (Word *) &ef->data[ppos + 9]; // PC offset to text
 			} else {
-				memcpy(&ef->data[dpos], OverlapHeader, sizeof(OverlapHeader));
-				dpos += sizeof(OverlapHeader) / sizeof(Longword);
+				WRITE_HEADER(OverlapHeader);
 			}
 		} else if (mini) {
 			// Write hunk memory sizes
@@ -848,9 +856,7 @@ public:
 			// Write header
 			ef->data[dpos++] = HUNK_CODE;
 			lpos2 = dpos++;
-			ppos = dpos;
-			memcpy(&ef->data[dpos], MiniHeader, sizeof(MiniHeader));
-			dpos += sizeof(MiniHeader) / sizeof(Longword);
+			WRITE_HEADER(MiniHeader);
 			offsetp = (Word *) (((unsigned char *) &ef->data[ppos]) + 14); // PC offset to end of data
 		} else {
 			int header1_size = sizeof(Header1) / sizeof(Longword);
@@ -871,14 +877,12 @@ public:
 			ef->data[dpos++] = HUNK_CODE;
 			ef->data[dpos++] = header1_size;
 			if (decrunch_text) {
-				memcpy(&ef->data[dpos], Header1T, sizeof(Header1T));
-				char *text_dest = ((char *) &ef->data[dpos]) + sizeof(Header1T);
-				memcpy(text_dest, decrunch_text->c_str(), decrunch_text->length());
-				ef->data[dpos + 6] = decrunch_text->length(); // Immediate for length of text
+				WRITE_HEADER(Header1T);
+				ef->data[ppos + 6] = decrunch_text->length(); // Immediate for length of text
+				WRITE_TEXT();
 			} else {
-				memcpy(&ef->data[dpos], Header1, sizeof(Header1));
+				WRITE_HEADER(Header1);
 			}
-			dpos += header1_size;
 
 			// Write hunks
 			for (int h = 1 ; h < numhunks ; h++) {
@@ -897,9 +901,7 @@ public:
 			// Write header 2
 			ef->data[dpos++] = HUNK_CODE;
 			lpos2 = dpos++;
-			ppos = dpos;
-			memcpy(&ef->data[dpos], Header2, sizeof(Header2));
-			dpos += sizeof(Header2) / sizeof(Longword);
+			WRITE_HEADER(Header2);
 		}
 
 		if (flash_address) {
@@ -918,8 +920,7 @@ public:
 		if (overlap) {
 			// Write decrunch text
 			if (decrunch_text) {
-				memcpy(&ef->data[dpos], decrunch_text->c_str(), decrunch_text->length());
-				dpos += (decrunch_text->length() + 3) / sizeof(Longword);
+				WRITE_TEXT();
 			}
 
 			// Set hunk sizes
