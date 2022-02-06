@@ -1,8 +1,24 @@
-; Copyright 1999-2017 Aske Simon Christensen. See LICENSE.txt for usage terms.
+; Copyright 1999-2022 Aske Simon Christensen. See LICENSE.txt for usage terms.
 
-TEXT	=	0
+WRITE		=	0
+COMMANDLINE	=	0
+TEXT		=	0
 
-;	auto	wb\OverlapHeader\OverlapHeader_End\
+	if	WRITE
+	if	COMMANDLINE
+	if	TEXT
+	auto	wb OverlapHeaderCT.bin\OverlapHeader\OverlapHeader_End\
+	else
+	auto	wb OverlapHeaderC.bin\OverlapHeader\OverlapHeader_End\
+	endc
+	else
+	if	TEXT
+	auto	wb OverlapHeaderT.bin\OverlapHeader\OverlapHeader_End\
+	else
+	auto	wb OverlapHeader.bin\OverlapHeader\OverlapHeader_End\
+	endc
+	endc
+	endc
 
 INIT_ONE_PROB		=	$8000
 ADJUST_SHIFT		=	4
@@ -23,13 +39,15 @@ Output		=	-60
 
 	align	0,4
 OverlapHeader:
+	if	COMMANDLINE
+	movem.l	d0/a0,-(a7)
+	endc
 	move.l	OverlapHeader-4(pc),d2
 	lsl.l	#2,d2
 	move.l	d2,a3
 	move.l	$4.w,a6
 
 	if	TEXT
-	movem.l	d0/a0,-(a7)
 	lea.l	DosName(pc),a1
 	jsr	OldOpenLibrary(a6)
 	move.l	d0,a6
@@ -45,7 +63,6 @@ TextLengthInstr:
 noout:	move.l	a6,a1
 	move.l	$4.w,a6
 	jsr	CloseLibrary(a6)
-	movem.l	(a7)+,d0/a0
 	endc
 
 	; Init range decoder state
@@ -136,6 +153,9 @@ End:
 	blt.b	.not204
 	jsr	CacheClearU(a6)
 .not204:
+	if	COMMANDLINE
+	movem.l	(a7)+,d0/a0
+	endc
 	jmp	4(a3)
 
 	if	TEXT
@@ -216,11 +236,11 @@ GetBitInner:
 	; 1 in C and X
 	rts
 
+OverlapHeader_InnerEnd:
 	align	0,4
-
 OverlapHeader_End:
 
-	printv	OverlapHeader_End-OverlapHeader
+	printv	OverlapHeader_InnerEnd-OverlapHeader
 	if	TEXT
 	printt
 	printv	TextLengthInstr+2-OverlapHeader

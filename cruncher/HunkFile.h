@@ -781,7 +781,7 @@ public:
 		return true;
 	}
 
-	HunkFile* crunch(PackParams *params, bool overlap, bool mini, string *decrunch_text, unsigned flash_address, RefEdgeFactory *edge_factory, bool show_progress) {
+	HunkFile* crunch(PackParams *params, bool overlap, bool mini, bool commandline, string *decrunch_text, unsigned flash_address, RefEdgeFactory *edge_factory, bool show_progress) {
 		int numhunks = hunks.size();
 
 		// Pad empty hunks
@@ -840,11 +840,22 @@ public:
 			ef->data[dpos++] = HUNK_CODE;
 			lpos2 = dpos++;
 			if (decrunch_text) {
-				WRITE_HEADER(OverlapHeaderT);
-				ef->data[ppos + 10] = decrunch_text->length(); // Immediate for length of text
-				offsetp = (Word *) &ef->data[ppos + 9]; // PC offset to text
+				int tpos;
+				if (commandline) {
+					WRITE_HEADER(OverlapHeaderCT);
+					tpos = ppos + 4;
+				} else {
+					WRITE_HEADER(OverlapHeaderT);
+					tpos = ppos + 3;
+				}
+				ef->data[tpos + 6] = decrunch_text->length(); // Immediate for length of text
+				offsetp = (Word *) &ef->data[tpos + 5]; // PC offset to text
 			} else {
-				WRITE_HEADER(OverlapHeader);
+				if (commandline) {
+					WRITE_HEADER(OverlapHeaderC);
+				} else {
+					WRITE_HEADER(OverlapHeader);
+				}
 			}
 		} else if (mini) {
 			// Write hunk memory sizes
@@ -856,9 +867,15 @@ public:
 			// Write header
 			ef->data[dpos++] = HUNK_CODE;
 			lpos2 = dpos++;
-			WRITE_HEADER(MiniHeader);
+			if (commandline) {
+				WRITE_HEADER(MiniHeaderC);
+			} else {
+				WRITE_HEADER(MiniHeader);
+			}
 			offsetp = (Word *) (((unsigned char *) &ef->data[ppos]) + 14); // PC offset to end of data
 		} else {
+			static_assert(sizeof(Header1) == sizeof(Header1C));
+			static_assert(sizeof(Header1T) == sizeof(Header1CT));
 			int header1_size = sizeof(Header1) / sizeof(Longword);
 			if (decrunch_text) {
 				header1_size = (sizeof(Header1T) + (decrunch_text->length() + 3)) / sizeof(Longword);
@@ -877,11 +894,19 @@ public:
 			ef->data[dpos++] = HUNK_CODE;
 			ef->data[dpos++] = header1_size;
 			if (decrunch_text) {
-				WRITE_HEADER(Header1T);
-				ef->data[ppos + 6] = decrunch_text->length(); // Immediate for length of text
+				if (commandline) {
+					WRITE_HEADER(Header1CT);
+				} else {
+					WRITE_HEADER(Header1T);
+				}
+				ef->data[ppos + 3] = decrunch_text->length(); // Immediate for length of text
 				WRITE_TEXT();
 			} else {
-				WRITE_HEADER(Header1);
+				if (commandline) {
+					WRITE_HEADER(Header1C);
+				} else {
+					WRITE_HEADER(Header1);
+				}
 			}
 
 			// Write hunks
@@ -901,7 +926,11 @@ public:
 			// Write header 2
 			ef->data[dpos++] = HUNK_CODE;
 			lpos2 = dpos++;
-			WRITE_HEADER(Header2);
+			if (commandline) {
+				WRITE_HEADER(Header2C);
+			} else {
+				WRITE_HEADER(Header2);
+			}
 		}
 
 		if (flash_address) {

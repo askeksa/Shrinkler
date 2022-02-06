@@ -32,6 +32,7 @@ void usage() {
 	printf(" -u, --no-crunch      Process hunks without crunching\n");
 	printf(" -o, --overlap        Overlap compressed and decompressed data to save memory\n");
 	printf(" -m, --mini           Use a smaller, but more restricted decrunch header\n");
+	printf(" -c, --commandline    Support passing commandline arguments to the program\n");
 	printf(" -1, ..., -9          Presets for all compression options (-2)\n");
 	printf(" -i, --iterations     Number of iterations for the compression (2)\n");
 	printf(" -l, --length-margin  Number of shorter matches considered for each match (2)\n");
@@ -206,6 +207,7 @@ int main2(int argc, const char *argv[]) {
 	FlagParameter   no_crunch     ("-u", "--no-crunch",                            argc, argv, consumed);
 	FlagParameter   overlap       ("-o", "--overlap",                              argc, argv, consumed);
 	FlagParameter   mini          ("-m", "--mini",                                 argc, argv, consumed);
+	FlagParameter   commandline   ("-c", "--commandline",                          argc, argv, consumed);
 	IntParameter    iterations    ("-i", "--iterations",      1,        9,    1*p, argc, argv, consumed);
 	IntParameter    length_margin ("-l", "--length-margin",   0,      100,    1*p, argc, argv, consumed);
 	IntParameter    same_length   ("-a", "--same-length",     1,   100000,   10*p, argc, argv, consumed);
@@ -229,9 +231,9 @@ int main2(int argc, const char *argv[]) {
 		}
 	}
 
-	if (data.seen && (hunkmerge.seen || overlap.seen || mini.seen || text.seen || textfile.seen || flash.seen)) {
+	if (data.seen && (commandline.seen || hunkmerge.seen || overlap.seen || mini.seen || text.seen || textfile.seen || flash.seen)) {
 		printf("Error: The data option cannot be used together with any of the\n");
-		printf("hunkmerge, overlap, mini, text, textfile or flash options.\n\n");
+		printf("commandline, hunkmerge, overlap, mini, text, textfile or flash options.\n\n");
 		usage();
 	}
 
@@ -384,7 +386,7 @@ int main2(int argc, const char *argv[]) {
 	int orig_mem = orig->memory_usage(true);
 	printf("Crunching...\n\n");
 	RefEdgeFactory edge_factory(references.value);
-	HunkFile *crunched = orig->crunch(&params, overlap.seen, mini.seen, decrunch_text_ptr, flash.value, &edge_factory, !no_progress.seen);
+	HunkFile *crunched = orig->crunch(&params, overlap.seen, mini.seen, commandline.seen, decrunch_text_ptr, flash.value, &edge_factory, !no_progress.seen);
 	delete orig;
 	printf("References considered:%8d\n",  edge_factory.max_edge_count);
 	printf("References discarded:%9d\n\n", edge_factory.max_cleaned_edges);

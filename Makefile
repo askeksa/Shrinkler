@@ -88,15 +88,17 @@ $(BUILD_DIR)/%.o: cruncher/%.cpp
 	$(CC) $(CFLAGS) $(INCLUDE) $< -c -o $@
 
 
-HEADERS  := Header1.dat Header1T.dat Header2.dat OverlapHeader.dat OverlapHeaderT.dat MiniHeader.dat
+HEADERS  := Header1.dat Header1C.dat Header1T.dat Header1CT.dat Header2.dat Header2C.dat
+HEADERS  += OverlapHeader.dat OverlapHeaderC.dat OverlapHeaderT.dat OverlapHeaderCT.dat
+HEADERS  += MiniHeader.dat MiniHeaderC.dat
 
 $(BUILD_DIR)/Shrinkler.o: cruncher/*.h $(patsubst %,decrunchers_bin/%,$(HEADERS))
 
 %.dat: %.bin
-	python -c 'for b in open("$^", "rb").read(): print ("0x%02X," % ord(b)),' > $@
+	python3 -c 'print(", ".join("0x%02X" % b for b in open("$^", "rb").read()))' > $@
 
 $(BUILD_DIR)/Shrinkler: $(BUILD_DIR)/Shrinkler.o
 	$(LINK) $(LFLAGS) $< -o $@
 
 clean:
-	rm -rf build
+	rm -rf build decrunchers_bin/*.dat

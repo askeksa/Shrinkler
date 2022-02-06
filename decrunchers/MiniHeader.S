@@ -1,6 +1,15 @@
-; Copyright 1999-2017 Aske Simon Christensen. See LICENSE.txt for usage terms.
+; Copyright 1999-2022 Aske Simon Christensen. See LICENSE.txt for usage terms.
 
-;	auto	wb\MiniHeader\MiniHeader_End\
+WRITE		=	0
+COMMANDLINE	=	0
+
+	if	WRITE
+	if	COMMANDLINE
+	auto	wb MiniHeaderC.bin\MiniHeader\MiniHeader_End\
+	else
+	auto	wb MiniHeader.bin\MiniHeader\MiniHeader_End\
+	endc
+	endc
 
 INIT_ONE_PROB		=	$8000
 ADJUST_SHIFT		=	4
@@ -10,8 +19,8 @@ DUMMY_CONTEXT_OFFSET	=	0
 LIB_VERSION	=	20
 CacheClearU	=	-636
 
-	align	0,4
 
+	align	0,4
 MiniHeader:
 	move.l	MiniHeader-4(pc),d2
 	lsl.l	#2,d2
@@ -70,7 +79,14 @@ Depack:
 	move.l	$4.w,a6
 	cmp.w	#37,LIB_VERSION(a6)
 	blt.b	not204
+	if	COMMANDLINE
+	movem.l	d0/a0,-(a7)
+	jsr	CacheClearU(a6)
+	movem.l	(a7)+,d0/a0
+	; Fall through and eventually hit RTS
+	else
 	jmp	CacheClearU(a6)
+	endc
 
 
 GetKind:
@@ -145,10 +161,10 @@ GetBit:
 	; 1 in C and X
 	rts
 
+MiniHeader_InnerEnd:
 	align	0,4
-
 MiniHeader_End:
 
-	printv	MiniHeader_End-MiniHeader
+	printv	MiniHeader_InnerEnd-MiniHeader
 	printt
 	printv	ContextOffsetInstr+2-MiniHeader

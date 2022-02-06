@@ -1,8 +1,19 @@
-; Copyright 1999-2017 Aske Simon Christensen. See LICENSE.txt for usage terms.
+; Copyright 1999-2022 Aske Simon Christensen. See LICENSE.txt for usage terms.
 
-;	auto	wb\Header1\Header1_End\
-;	auto	wb\Header1T\Header1T_End\
-;	auto	wb\Header2\Header2_End\
+WRITE		=	0
+COMMANDLINE	=	0
+
+	if	WRITE
+	if	COMMANDLINE
+	auto	wb Header1C.bin\Header1\Header1_End\
+	auto	wb Header1CT.bin\Header1T\Header1T_End\
+	auto	wb Header2C.bin\Header2\Header2_End\
+	else
+	auto	wb Header1.bin\Header1\Header1_End\
+	auto	wb Header1T.bin\Header1T\Header1T_End\
+	auto	wb Header2.bin\Header2\Header2_End\
+	endc
+	endc
 
 INIT_ONE_PROB		=	$8000
 ADJUST_SHIFT		=	4
@@ -27,7 +38,11 @@ Output		=	-60
 	align	0,4
 Header1:
 	lea.l	Header1(pc),a4
+	if	COMMANDLINE
 	movem.l	d0/a0/a4,-(a7)
+	else
+	move.l	a4,-(a7)
+	endc
 	move.l	-(a4),d2
 	move.l	a4,a3
 .hunk:	lsl.l	#2,d2
@@ -35,26 +50,39 @@ Header1:
 	move.l	d2,a4
 	move.l	(a4),d2
 	bne.b	.hunk
+	ifeq	COMMANDLINE
+	move.l	a4,a1
+	endc
 
 	move.l	$4.w,a6
 	jmp	(a4)
 
+Header1_InnerEnd:
 	align	0,4
 Header1_End:
 
+
 Header1T:
 	lea.l	Header1T(pc),a4
+	if	COMMANDLINE
 	movem.l	d0/a0/a4,-(a7)
 	move.l	-(a4),d2
+TextLengthInstr:
+	move.l	#DUMMY_TEXT_LENGTH,d3
 	move.l	a4,a3
+	else
+	move.l	a4,-(a7)
+	move.l	-(a4),d2
+	move.l	a4,a3
+TextLengthInstr:
+	move.l	#DUMMY_TEXT_LENGTH,d3
+	endc
 .hunk:	lsl.l	#2,d2
 	move.l	a4,a5
 	move.l	d2,a4
 	move.l	(a4),d2
 	bne.b	.hunk
 
-TextLengthInstr:
-	move.l	#DUMMY_TEXT_LENGTH,d3
 	move.l	$4.w,a6
 	lea.l	DosName(pc),a1
 	jsr	OldOpenLibrary(a6)
@@ -69,13 +97,18 @@ TextLengthInstr:
 	move.l	$4.w,a6
 	jsr	CloseLibrary(a6)
 
+	ifeq	COMMANDLINE
+	move.l	a4,a1
+	endc
 	jmp	(a4)
 
 DosName:
 	dc.b	"dos.library",0
 
+Header1T_InnerEnd:
 	align	0,4
 Header1T_End:
+
 
 Header2:
 	; Detach last hunk
@@ -92,9 +125,9 @@ Header2:
 
 	move.l	a3,a2
 HunkLoop:
-	move.l	a2,a1
-	addq.l	#4,a1
-	; A1 = Hunk Data Destination
+	move.l	a2,a0
+	addq.l	#4,a0
+	; A0 = Hunk Data Destination
 
 	moveq.l	#NUM_CONTEXTS>>4,d6
 	lsl.l	#4,d6
@@ -109,7 +142,7 @@ HunkLoop:
 	bsr.b	GetBit
 	addx.b	d6,d6
 	bcc.b	.getlit
-	move.b	d6,(a1)+
+	move.b	d6,(a0)+
 .switch:
 	bsr.b	GetKind
 	bcc.b	.lit
@@ -121,7 +154,7 @@ HunkLoop:
 	moveq.l	#4,d6
 	bsr.b	GetNumber
 .copyloop:
-	move.b	(a1,d5.l),(a1)+
+	move.b	(a0,d5.l),(a0)+
 	subq.l	#1,d7
 	bne.b	.copyloop
 .afterref:
@@ -138,19 +171,19 @@ HunkLoop:
 	move.l	a3,d5
 RelocHunk:
 	addq.l	#4,d5
-	move.l	a2,a1
+	move.l	a2,a0
 .relocloop:
 	moveq.l	#5,d6
 	bsr.b	GetNumber
-	add.l	d7,a1
+	add.l	d7,a0
 	lsr.l	#2,d7
 	beq.b	NextRelocHunk
-	add.l	d5,(a1)
+	add.l	d5,(a0)
 	bra.b	.relocloop
 
 NextRelocHunk:
-	move.l	d5,a1
-	move.l	-(a1),d5
+	move.l	d5,a0
+	move.l	-(a0),d5
 	lsl.l	#2,d5
 	bne.b	RelocHunk
 NextHunk:
@@ -165,16 +198,21 @@ End:
 	blt.b	.not204
 	jsr	CacheClearU(a6)
 .not204:
+	if	COMMANDLINE
 	jsr	Forbid(a6)
 	lea.l	Header2-8(pc),a1
 	move.l	(a1),d0
 	jsr	FreeMem(a6)
 	movem.l	(a7)+,d0/a0
 	jmp	Permit(a6)
+	else
+	move.l	-(a1),d0
+	jmp	FreeMem(a6)
+	endc
 
 
 GetKind:
-	move.l	a1,d4
+	move.l	a0,d4
 	moveq.l	#1,d6
 	and.l	d4,d6
 	lsl.w	#8,d6
@@ -245,12 +283,12 @@ GetBitInner:
 	; 1 in C and X
 	rts
 
+Header2_InnerEnd:
 	align	0,4
-
 Header2_End:
 
-	printv	Header1_End-Header1
-	printv	Header1T_End-Header1T
-	printv	Header2_End-Header2
+	printv	Header1_InnerEnd-Header1
+	printv	Header1T_InnerEnd-Header1T
+	printv	Header2_InnerEnd-Header2
 	printt
 	printv	TextLengthInstr+2-Header1T
