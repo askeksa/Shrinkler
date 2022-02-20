@@ -1,7 +1,7 @@
 
 Shrinkler executable file compressor for Amiga
 
-Copyright 1999-2015 Aske Simon Christensen, with exceptions noted below.
+Copyright 1999-2022 Aske Simon Christensen, with exceptions noted below.
 
 Permission is hereby granted to anyone obtaining a copy of this software
 package (including accompanying documentation) to compile, use, copy,
@@ -29,7 +29,3 @@ Exceptions:
 
 - doshunks.h is part of the Amiga SDK and is Copyright 1989-1993
   Commodore-Amiga, Inc.
-
-- The "as" and "ld" executables in the toolchain directory are taken
-  from the AmiDevCpp distribution. They are covered by the GNU General
-  Public License.
