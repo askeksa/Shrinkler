@@ -23,6 +23,7 @@ using std::string;
 #include "AmigaWords.h"
 #include "Pack.h"
 #include "RangeDecoder.h"
+#include "Verifier.h"
 
 class DataFile {
 	vector<unsigned char> data;
