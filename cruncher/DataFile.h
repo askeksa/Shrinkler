@@ -25,7 +25,23 @@ using std::string;
 #include "RangeDecoder.h"
 #include "Verifier.h"
 
+#define SHRINKLER_MAJOR_VERSION 4
+#define SHRINKLER_MINOR_VERSION 7
+#define FLAG_PARITY_CONTEXT (1 << 0)
+
+struct DataHeader {
+	char magic[4];
+	char major_version;
+	char minor_version;
+	Word header_size;
+	Longword compressed_size;
+	Longword uncompressed_size;
+	Longword safety_margin;
+	Longword flags;
+};
+
 class DataFile {
+	DataHeader header;
 	vector<unsigned char> data;
 
 	vector<unsigned char> compress(PackParams *params, RefEdgeFactory *edge_factory, bool show_progress) {
@@ -98,10 +114,14 @@ public:
 		exit(1);
 	}
 
-	void save(const char *filename) {
+	void save(const char *filename, bool write_header) {
 		FILE *file;
 		if ((file = fopen(filename, "wb"))) {
-			if (fwrite(&data[0], 1, data.size(), file) == data.size()) {
+			bool ok = true;
+			if (write_header) {
+				ok = fwrite(&header, 1, sizeof(DataHeader), file) == sizeof(DataHeader);
+			}
+			if (ok && fwrite(&data[0], 1, data.size(), file) == data.size()) {
 				fclose(file);
 				return;
 			}
@@ -111,8 +131,8 @@ public:
 		exit(1);
 	}
 
-	int size() {
-		return data.size();		
+	int size(bool include_header) {
+		return (include_header ? sizeof(DataHeader) : 0) + data.size();
 	}
 
 	DataFile* crunch(PackParams *params, RefEdgeFactory *edge_factory, bool show_progress) {
@@ -123,6 +143,17 @@ public:
 
 		DataFile *ef = new DataFile;
 		ef->data = pack_buffer;
+		ef->header.magic[0] = 'S';
+		ef->header.magic[1] = 'h';
+		ef->header.magic[2] = 'r';
+		ef->header.magic[3] = 'i';
+		ef->header.major_version = SHRINKLER_MAJOR_VERSION;
+		ef->header.minor_version = SHRINKLER_MINOR_VERSION;
+		ef->header.header_size = sizeof(DataHeader) - 8;
+		ef->header.compressed_size = pack_buffer.size();
+		ef->header.uncompressed_size = data.size();
+		ef->header.safety_margin = margin;
+		ef->header.flags = params->parity_context ? FLAG_PARITY_CONTEXT : 0;
 
 		return ef;
 	}
