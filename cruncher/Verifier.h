@@ -17,6 +17,7 @@ class LZVerifier : public LZReceiver, public CompressedDataReadListener {
 	unsigned char *data;
 	int data_length;
 	int hunk_mem;
+	int read_size;
 	int pos;
 
 	unsigned char getData(int i) {
@@ -25,11 +26,12 @@ class LZVerifier : public LZReceiver, public CompressedDataReadListener {
 	}
 
 public:
-	int compressed_longword_count;
+	int compressed_read_count;
 	int front_overlap_margin;
 
-	LZVerifier(int hunk, unsigned char *data, int data_length, int hunk_mem) : hunk(hunk), data(data), data_length(data_length), hunk_mem(hunk_mem), pos(0) {
-		compressed_longword_count = 0;
+	LZVerifier(int hunk, unsigned char *data, int data_length, int hunk_mem, int read_size)
+		: hunk(hunk), data(data), data_length(data_length), hunk_mem(hunk_mem), read_size(read_size), pos(0) {
+		compressed_read_count = 0;
 		front_overlap_margin = 0;
 	}
 
@@ -75,11 +77,13 @@ public:
 	}
 
 	void read(int index) {
-		// Another longword of compresed data read
-		int margin = pos - compressed_longword_count * 4;
-		if (margin > front_overlap_margin) {
-			front_overlap_margin = margin;
+		// Another byte of compresed data read
+		if ((index & (read_size - 1)) == 0) {
+			int margin = pos - compressed_read_count * read_size;
+			if (margin > front_overlap_margin) {
+				front_overlap_margin = margin;
+			}
+			compressed_read_count += 1;
 		}
-		compressed_longword_count += 1;
 	}
 };

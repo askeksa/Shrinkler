@@ -1,4 +1,4 @@
-// Copyright 1999-2019 Aske Simon Christensen. See LICENSE.txt for usage terms.
+// Copyright 1999-2022 Aske Simon Christensen. See LICENSE.txt for usage terms.
 
 /*
 
@@ -104,7 +104,7 @@ void packData(unsigned char *data, int data_length, int zero_padding, PackParams
 		delete measurer;
 
 		// Encode result using adaptive range coding
-		vector<unsigned> dummy_result;
+		vector<unsigned char> dummy_result;
 		RangeCoder *range_coder = new RangeCoder(LZEncoder::NUM_CONTEXTS, dummy_result);
 		real_size = result.encode(LZEncoder(range_coder, params->parity_context));
 		range_coder->finish();

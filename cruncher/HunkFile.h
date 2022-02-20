@@ -82,10 +82,10 @@ class HunkFile {
 	vector<HunkInfo> hunks;
 	int relocshort_total_size;
 
-	vector<unsigned> compress_hunks(PackParams *params, bool overlap, bool mini, RefEdgeFactory *edge_factory, bool show_progress) {
+	vector<unsigned char> compress_hunks(PackParams *params, bool overlap, bool mini, RefEdgeFactory *edge_factory, bool show_progress) {
 		int numhunks = hunks.size();
 
-		vector<unsigned> pack_buffer;
+		vector<unsigned char> pack_buffer;
 		RangeCoder range_coder(LZEncoder::NUM_CONTEXTS + NUM_RELOC_CONTEXTS, pack_buffer);
 
 		// Print compression status header
@@ -164,10 +164,12 @@ class HunkFile {
 		range_coder.finish();
 		printf("\n");
 
-		return pack_buffer;		
+		// Round up compressed size to a whole number of longwords
+		pack_buffer.resize((pack_buffer.size() + 3) & -4, 0);
+		return pack_buffer;
 	}
 
-	vector<pair<int,int> > verify(vector<unsigned>& pack_buffer, bool overlap, bool mini) {
+	vector<pair<int,int> > verify(vector<unsigned char>& pack_buffer, bool overlap, bool mini) {
 		int numhunks = hunks.size();
 		vector<pair<int,int> > count_and_hunksize;
 
@@ -194,7 +196,7 @@ class HunkFile {
 
 			// Verify data
 			bool error = false;
-			LZVerifier verifier(h, hunk_data, hunk_data_length, hunks[h].memsize * sizeof(Longword));
+			LZVerifier verifier(h, hunk_data, hunk_data_length, hunks[h].memsize * sizeof(Longword), sizeof(Longword));
 			decoder.reset();
 			decoder.setListener(&verifier);
 			if (!lzd.decode(verifier)) {
@@ -222,7 +224,7 @@ class HunkFile {
 			}
 
 			int margin = verifier.front_overlap_margin;
-			int count = verifier.compressed_longword_count;
+			int count = verifier.compressed_read_count;
 			int min_hunksize = (margin == 0 ? 1 : (margin + 3) / 4) + count;
 			count_and_hunksize.push_back(make_pair(count, min_hunksize));
 		}
@@ -726,7 +728,7 @@ public:
 			printf("\n");
 		}
 
-		vector<unsigned> pack_buffer = compress_hunks(params, overlap, mini, edge_factory, show_progress);
+		vector<unsigned char> pack_buffer = compress_hunks(params, overlap, mini, edge_factory, show_progress);
 		vector<pair<int,int> > count_and_hunksize = verify(pack_buffer, overlap, mini);
 
 		int newnumhunks = numhunks+1;
@@ -889,17 +891,17 @@ public:
 			int packed_index = 0;
 			for (int h = 0 ; h < numhunks ; h++) {
 				ef->data[dpos++] = HUNK_DATA;
-				int longwords_in_hunk = min<int>(count_and_hunksize[h].first, pack_buffer.size() - packed_index);
+				int longwords_in_hunk = min<int>(count_and_hunksize[h].first, pack_buffer.size() / 4 - packed_index);
 				ef->data[dpos++] = longwords_in_hunk + 1;
 				ef->data[dpos++] = count_and_hunksize[h].first * 4;
 				for (int i = 0 ; i < longwords_in_hunk ; i++) {
-					ef->data[dpos++] = pack_buffer[packed_index++];
+					ef->data[dpos++] = *(Longword*)&pack_buffer[(packed_index++) * 4];
 				}
 			}
 		} else if (mini) {
 			// Write compressed data backwards
-			for (int i = pack_buffer.size()-1 ; i >= 0 ; i--) {
-				ef->data[dpos++] = pack_buffer[i];
+			for (int i = pack_buffer.size() / 4 - 1 ; i >= 0 ; i--) {
+				ef->data[dpos++] = *(Longword*)&pack_buffer[i * 4];
 			}
 
 			// Set hunk sizes
@@ -913,7 +915,7 @@ public:
 			}
 
 			// Set size of data in header
-			int offset = (int) *offsetp + pack_buffer.size() * 4;
+			int offset = (int) *offsetp + pack_buffer.size();
 			if (offset > 32767) {
 				printf("Size overflow: final size in mini mode must be less than 24k.\n\n");
 				exit(1);
@@ -921,8 +923,8 @@ public:
 			*offsetp = offset;
 		} else {
 			// Write compressed data backwards
-			for (int i = pack_buffer.size()-1 ; i >= 0 ; i--) {
-				ef->data[dpos++] = pack_buffer[i];
+			for (int i = pack_buffer.size() / 4 - 1 ; i >= 0 ; i--) {
+				ef->data[dpos++] = *(Longword*)&pack_buffer[i * 4];
 			}
 
 			// Set hunk sizes

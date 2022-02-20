@@ -1,4 +1,4 @@
-// Copyright 1999-2015 Aske Simon Christensen. See LICENSE.txt for usage terms.
+// Copyright 1999-2022 Aske Simon Christensen. See LICENSE.txt for usage terms.
 
 /*
 
@@ -24,7 +24,7 @@ using std::vector;
 
 class RangeCoder : public Coder {
 	vector<unsigned short> contexts;
-	vector<unsigned>& out;
+	vector<unsigned char>& out;
 	int dest_bit;
 	unsigned intervalsize;
 	unsigned intervalmin;
@@ -42,22 +42,22 @@ class RangeCoder : public Coder {
 
 	void addBit() {
 		int pos = dest_bit;
-		int longpos;
+		int bytepos;
 		int bitmask;
 		do {
 			pos--;
 			if (pos < 0) return;
-			longpos = pos >> 5;
-			bitmask = 0x80000000 >> (pos & 31);
-			while (longpos >= out.size()) {
+			bytepos = pos >> 3;
+			bitmask = 0x80 >> (pos & 7);
+			while (bytepos >= out.size()) {
 				out.push_back(0);
 			}
-			out[longpos] ^= bitmask;
-		} while ((out[longpos] & bitmask) == 0);
+			out[bytepos] ^= bitmask;
+		} while ((out[bytepos] & bitmask) == 0);
 	}
 
 public:
-	RangeCoder(int n_contexts, vector<unsigned>& out) : out(out) {
+	RangeCoder(int n_contexts, vector<unsigned char>& out) : out(out) {
 		contexts.resize(n_contexts, 0x8000);
 		dest_bit = -1;
 		intervalsize = 0x8000;
@@ -119,7 +119,7 @@ public:
 			final_size >>= 1;
 		}
 
-		while ((dest_bit - 1) >> 5 >= out.size()) {
+		while ((dest_bit - 1) >> 3 >= out.size()) {
 			out.push_back(0);
 		}
 	}

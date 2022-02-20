@@ -1,4 +1,4 @@
-// Copyright 1999-2017 Aske Simon Christensen. See LICENSE.txt for usage terms.
+// Copyright 1999-2022 Aske Simon Christensen. See LICENSE.txt for usage terms.
 
 /*
 
@@ -28,8 +28,8 @@ using std::string;
 class DataFile {
 	vector<unsigned char> data;
 
-	vector<unsigned> compress(PackParams *params, RefEdgeFactory *edge_factory, bool show_progress) {
-		vector<unsigned> pack_buffer;
+	vector<unsigned char> compress(PackParams *params, RefEdgeFactory *edge_factory, bool show_progress) {
+		vector<unsigned char> pack_buffer;
 		RangeCoder range_coder(LZEncoder::NUM_CONTEXTS + NUM_RELOC_CONTEXTS, pack_buffer);
 
 		// Print compression status header
@@ -50,7 +50,7 @@ class DataFile {
 		return pack_buffer;		
 	}
 
-	int verify(PackParams *params, vector<unsigned>& pack_buffer) {
+	int verify(PackParams *params, vector<unsigned char>& pack_buffer) {
 		printf("Verifying... ");
 		fflush(stdout);
 		RangeDecoder decoder(LZEncoder::NUM_CONTEXTS + NUM_RELOC_CONTEXTS, pack_buffer);
@@ -58,7 +58,7 @@ class DataFile {
 
 		// Verify data
 		bool error = false;
-		LZVerifier verifier(0, &data[0], data.size(), data.size());
+		LZVerifier verifier(0, &data[0], data.size(), data.size(), 1);
 		decoder.reset();
 		decoder.setListener(&verifier);
 		if (!lzd.decode(verifier)) {
@@ -77,7 +77,7 @@ class DataFile {
 
 		printf("OK\n\n");
 
-		return verifier.front_overlap_margin + pack_buffer.size() * 4 - data.size();
+		return verifier.front_overlap_margin + pack_buffer.size() - data.size();
 	}
 
 public:
@@ -116,18 +116,13 @@ public:
 	}
 
 	DataFile* crunch(PackParams *params, RefEdgeFactory *edge_factory, bool show_progress) {
-		vector<unsigned> pack_buffer = compress(params, edge_factory, show_progress);
+		vector<unsigned char> pack_buffer = compress(params, edge_factory, show_progress);
 		int margin = verify(params, pack_buffer);
 
 		printf("Minimum safety margin for overlapped decrunching: %d\n\n", margin);
 
 		DataFile *ef = new DataFile;
-		ef->data.resize(pack_buffer.size() * 4, 0);
-
-		Longword* dest = (Longword*) (void*) &ef->data[0];
-		for (int i = 0 ; i < pack_buffer.size() ; i++) {
-			dest[i] = pack_buffer[i];
-		}
+		ef->data = pack_buffer;
 
 		return ef;
 	}

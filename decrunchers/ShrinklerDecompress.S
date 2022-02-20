@@ -1,4 +1,4 @@
-; Copyright 1999-2015 Aske Simon Christensen.
+; Copyright 1999-2022 Aske Simon Christensen.
 ;
 ; The code herein is free to use, in whole or in part,
 ; modified or as is, for any legal purpose.
@@ -28,8 +28,8 @@ NUM_CONTEXTS		=	1536
 ; Uses 3 kilobytes of space on the stack.
 ; Preserves D2-D7/A2-A6 and assumes callback does the same.
 ;
-; Decompression code may read one longword beyond compressed data.
-; The contents of this longword does not matter.
+; Decompression code may read one byte beyond compressed data.
+; The contents of this byte does not matter.
 
 ShrinklerDecompress:
 	movem.l	d2-d7/a4-a6,-(a7)
@@ -41,8 +41,7 @@ ShrinklerDecompress:
 	; Init range decoder state
 	moveq.l	#0,d2
 	moveq.l	#1,d3
-	moveq.l	#1,d4
-	ror.l	#1,d4
+	moveq.l	#-$80,d4
 
 	; Init probabilities
 	move.l	#NUM_CONTEXTS,d6
@@ -134,10 +133,10 @@ GetNumber:
 	; Out: Bit in C and X
 
 readbit:
-	add.l	d4,d4
+	add.b	d4,d4
 	bne.b	nonewword
-	move.l	(a4)+,d4
-	addx.l	d4,d4
+	move.b	(a4)+,d4
+	addx.b	d4,d4
 nonewword:
 	addx.w	d2,d2
 	add.w	d3,d3

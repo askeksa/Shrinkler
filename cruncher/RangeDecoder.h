@@ -1,4 +1,4 @@
-// Copyright 1999-2014 Aske Simon Christensen. See LICENSE.txt for usage terms.
+// Copyright 1999-2022 Aske Simon Christensen. See LICENSE.txt for usage terms.
 
 /*
 
@@ -31,7 +31,7 @@ public:
 
 class RangeDecoder : public Decoder {
 	vector<unsigned short> contexts;
-	vector<unsigned>& data;
+	vector<unsigned char>& data;
 	CompressedDataReadListener* listener;
 	int bit_index;
 	unsigned intervalsize;
@@ -39,21 +39,21 @@ class RangeDecoder : public Decoder {
 	unsigned uncertainty;
 
 	int getBit() {
-		int long_index = bit_index >> 5;
-		int bit_in_long = (~bit_index) & 31;
-		if (bit_in_long == 31) {
-			if (listener) listener->read(long_index);
+		int byte_index = bit_index >> 3;
+		int bit_in_byte = (~bit_index) & 7;
+		if (bit_in_byte == 7) {
+			if (listener) listener->read(byte_index);
 		}
-		if (bit_index++ >= data.size() * 32) {
+		if (bit_index++ >= data.size() * 8) {
 			uncertainty <<= 1;
 			return 0;
 		}
-		int bit = (data[long_index] >> bit_in_long) & 1;
+		int bit = (data[byte_index] >> bit_in_byte) & 1;
 		return bit;
 	}
 
 public:
-	RangeDecoder(int n_contexts, vector<unsigned>& data) : data(data) {
+	RangeDecoder(int n_contexts, vector<unsigned char>& data) : data(data) {
 		contexts.resize(n_contexts, 0x8000);
 		bit_index = 0;
 		intervalsize = 1;
