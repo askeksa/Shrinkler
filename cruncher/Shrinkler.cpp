@@ -1,4 +1,4 @@
-// Copyright 1999-2020 Aske Simon Christensen. See LICENSE.txt for usage terms.
+// Copyright 1999-2022 Aske Simon Christensen. See LICENSE.txt for usage terms.
 
 /*
 
@@ -6,7 +6,7 @@ Main file for the cruncher.
 
 */
 
-//#define SHRINKLER_TITLE ("Shrinkler executable file compressor by Blueberry - version 4.6 (2020-02-22)\n\n")
+//#define SHRINKLER_TITLE ("Shrinkler executable file compressor by Blueberry - version 4.7 (2022-02-22)\n\n")
 
 #ifndef SHRINKLER_TITLE
 #define SHRINKLER_TITLE ("Shrinkler executable file compressor by Blueberry - development version (built " __DATE__ " " __TIME__ ")\n\n")

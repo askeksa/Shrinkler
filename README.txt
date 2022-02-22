@@ -19,6 +19,14 @@ A version for 6502 is here: https://github.com/atari8xxl/unShrinkler
 
 History:
 
+2022-02-22:  Version 4.7. Faster and with new features:
+             Now built with Amiga-GCC. 15% faster and no longer needs ixemul.
+             Option to disable parity context, for use with 8-bit data.
+             Option to support commandline arguments. Works with all headers.
+             Data sizes are no longer rounded up to a multiple of 4 bytes.
+             Option to write header in front of data file with sizes and flags.
+             Utility code to load and decompress a data file with header.
+
 2020-02-22:  Version 4.6. Better support for large files:
              Faster suffix array construction (the pause before each hunk).
              Fixed verify error when compressed size is above roughly 2MB.
