@@ -34,12 +34,12 @@ void usage() {
 	printf(" -o, --overlap        Overlap compressed and decompressed data to save memory\n");
 	printf(" -m, --mini           Use a smaller, but more restricted decrunch header\n");
 	printf(" -c, --commandline    Support passing commandline arguments to the program\n");
-	printf(" -1, ..., -9          Presets for all compression options (-2)\n");
-	printf(" -i, --iterations     Number of iterations for the compression (2)\n");
-	printf(" -l, --length-margin  Number of shorter matches considered for each match (2)\n");
-	printf(" -a, --same-length    Number of matches of the same length to consider (20)\n");
-	printf(" -e, --effort         Perseverance in finding multiple matches (200)\n");
-	printf(" -s, --skip-length    Minimum match length to accept greedily (2000)\n");
+	printf(" -1, ..., -9          Presets for all compression options (-3)\n");
+	printf(" -i, --iterations     Number of iterations for the compression (3)\n");
+	printf(" -l, --length-margin  Number of shorter matches considered for each match (3)\n");
+	printf(" -a, --same-length    Number of matches of the same length to consider (30)\n");
+	printf(" -e, --effort         Perseverance in finding multiple matches (300)\n");
+	printf(" -s, --skip-length    Minimum match length to accept greedily (3000)\n");
 	printf(" -r, --references     Number of reference edges to keep in memory (100000)\n");
 	printf(" -t, --text           Print a text, followed by a newline, before decrunching\n");
 	printf(" -T, --textfile       Print the contents of the given file before decrunching\n");
@@ -199,7 +199,7 @@ int main2(int argc, const char *argv[]) {
 
 	vector<bool> consumed(argc);
 
-	DigitParameter  preset        (                                             2, argc, argv, consumed);
+	DigitParameter  preset        (                                             3, argc, argv, consumed);
 	int p = preset.value;
 
 	FlagParameter   data          ("-d", "--data",                                 argc, argv, consumed);

@@ -26,6 +26,7 @@ History:
              Data sizes are no longer rounded up to a multiple of 4 bytes.
              Option to write header in front of data file with sizes and flags.
              Utility code to load and decompress a data file with header.
+             Upped default compression preset to -3.
 
 2020-02-22:  Version 4.6. Better support for large files:
              Faster suffix array construction (the pause before each hunk).
