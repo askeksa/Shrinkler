@@ -805,8 +805,8 @@ public:
 			}
 			offsetp = (Word *) (((unsigned char *) &ef->data[ppos]) + 14); // PC offset to end of data
 		} else {
-			static_assert(sizeof(Header1) == sizeof(Header1C));
-			static_assert(sizeof(Header1T) == sizeof(Header1CT));
+			static_assert(sizeof(Header1) == sizeof(Header1C), "Header1 vs Header1C size mismatch");
+			static_assert(sizeof(Header1T) == sizeof(Header1CT), "Header1T vs Header1CT size mismatch");
 			int header1_size = sizeof(Header1) / sizeof(Longword);
 			if (decrunch_text) {
 				header1_size = (sizeof(Header1T) + (decrunch_text->length() + 3)) / sizeof(Longword);
